@@ -1,0 +1,569 @@
+-- Capybara Hub | Fancy Warm-Themed Utility GUI
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Configuration Variables
+local TARGET_NAME = "rakoof"
+local AUTO_KILL_ENABLED = false
+local AUTO_PICKUP_ENABLED = true
+local BRING_BOSS_ENABLED = false
+local EXPAND_HITBOX_ENABLED = false
+local SPEED_BOOST_ENABLED = false
+local TOGGLE_KEY = Enum.KeyCode.RightControl 
+local connectionLoop = nil
+local bringLoop = nil
+
+-- Original Part Sizes & Properties Storage
+local originalHitboxData = {}
+
+-- Weapon Priority List (Highest to Lowest)
+local WEAPON_PRIORITY = {
+    "TormentumAxe",
+    "Murasama",
+    "Ruinstrikers",
+    "StunStick"
+}
+
+--------------------------------------------------------------------------------
+-- 1. FANCY WARM CAPYBARA GUI SETUP
+--------------------------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CapybaraHubCustom"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 350, 0, 630)
+MainFrame.Position = UDim2.new(0.5, -175, 0.35, -315)
+MainFrame.BackgroundColor3 = Color3.fromRGB(60, 42, 33) -- Rich Dark Mocha
+MainFrame.BackgroundTransparency = 0.15
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Parent = ScreenGui
+
+local FrameCorner = Instance.new("UICorner")
+FrameCorner.CornerRadius = UDim.new(0, 16)
+FrameCorner.Parent = MainFrame
+
+local FrameStroke = Instance.new("UIStroke")
+FrameStroke.Thickness = 2
+FrameStroke.Color = Color3.fromRGB(229, 186, 115) -- Warm Gold Outline
+FrameStroke.Transparency = 0.2
+FrameStroke.Parent = MainFrame
+
+-- Header Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 50)
+TitleBar.BackgroundColor3 = Color3.fromRGB(43, 29, 22) -- Deep Espresso Header
+TitleBar.BackgroundTransparency = 0.2
+TitleBar.Active = true
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 16)
+TitleCorner.Parent = TitleBar
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Size = UDim2.new(1, -120, 1, 0)
+TitleText.Position = UDim2.new(0, 14, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "🍊 Capybara Hub [RightCtrl]"
+TitleText.TextColor3 = Color3.fromRGB(245, 230, 210)
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextSize = 16
+TitleText.Parent = TitleBar
+
+-- Animated ASCII Capybara Display
+local CapybaraLabel = Instance.new("TextLabel")
+CapybaraLabel.Size = UDim2.new(0, 110, 0, 35)
+CapybaraLabel.Position = UDim2.new(1, -115, 0, 7)
+CapybaraLabel.BackgroundTransparency = 1
+CapybaraLabel.Text = "( capy-bara )"
+CapybaraLabel.TextColor3 = Color3.fromRGB(245, 190, 120)
+CapybaraLabel.Font = Enum.Font.Code
+CapybaraLabel.TextSize = 13
+CapybaraLabel.Parent = TitleBar
+
+local capyFrames = {"( capy-bara )", "( chill-mode )", "( 🍊-bara )", "( capy-pullup )"}
+task.spawn(function()
+    local index = 1
+    while task.wait(0.4) do
+        CapybaraLabel.Text = capyFrames[index]
+        index = (index % #capyFrames) + 1
+    end
+end)
+
+-- Smooth Dragging Logic
+local dragging, dragInput, dragStart, startPos
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Layout Container
+local Container = Instance.new("Frame")
+Container.Size = UDim2.new(1, 0, 1, -55)
+Container.Position = UDim2.new(0, 0, 0, 55)
+Container.BackgroundTransparency = 1
+Container.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 6)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = Container
+
+--------------------------------------------------------------------------------
+-- 2. STYLIZED CAPYBARA BUTTON BUILDER
+--------------------------------------------------------------------------------
+local function CreateButton(text, order, initialActive)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.92, 0, 0, 36)
+    btn.BackgroundColor3 = initialActive and Color3.fromRGB(215, 145, 75) or Color3.fromRGB(90, 65, 52)
+    btn.BackgroundTransparency = 0.2
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(250, 245, 235)
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 14
+    btn.LayoutOrder = order
+    btn.Parent = Container
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1
+    stroke.Color = Color3.fromRGB(240, 205, 150)
+    stroke.Transparency = 0.5
+    stroke.Parent = btn
+
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.05}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
+    end)
+    
+    return btn
+end
+
+local SafezoneBtn = CreateButton("🛡️ Safezone (Ready Guy)", 1, false)
+local SpawnBtn = CreateButton("📍 Nearest Spawn", 2, false)
+local RockBtn = CreateButton("🗿 Teleport to Rock Mesh", 3, false)
+local TPBtn = CreateButton("🎯 Teleport Behind Target", 4, false)
+local BringBtn = CreateButton("🧲 Bring RakOOF: OFF", 5, false)
+local HitboxBtn = CreateButton("📦 Expand RakOOF Hitbox: OFF", 6, false)
+local AutoKillBtn = CreateButton("⚔️ Auto Attack: OFF", 7, false)
+local AutoLootBtn = CreateButton("🍊 Auto Pickup: ON", 8, true)
+local SpeedBtn = CreateButton("⚡ Speed Boost: OFF", 9, false)
+local FogBtn = CreateButton("💡 No Fog / Fullbright: OFF", 10, false)
+
+--------------------------------------------------------------------------------
+-- 3. KEYBIND TOGGLE
+--------------------------------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == TOGGLE_KEY then
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 4. TELEPORT TO ROCK MESH
+--------------------------------------------------------------------------------
+RockBtn.MouseButton1Click:Connect(function()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local hrp = character.HumanoidRootPart
+    local rockObj = ReplicatedStorage:FindFirstChild("rock", true) or Workspace:FindFirstChild("rock", true)
+    
+    if rockObj then
+        if rockObj:IsA("BasePart") then
+            hrp.CFrame = rockObj.CFrame
+        elseif rockObj:IsA("Model") then
+            local targetPart = rockObj.PrimaryPart or rockObj:FindFirstChildWhichIsA("BasePart")
+            if targetPart then
+                hrp.CFrame = targetPart.CFrame
+            else
+                warn("Rock model found, but contains no valid parts to teleport to.")
+            end
+        end
+    else
+        warn("Mesh/Part named 'rock' was not found in ReplicatedStorage or Workspace.")
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 5. TELEPORT TO SAFEZONE
+--------------------------------------------------------------------------------
+local function findSafezoneNPC()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
+            local nameLower = string.lower(obj.Name)
+            
+            if string.find(nameLower, "ready") or string.find(nameLower, "safe") or string.find(nameLower, "spawn") or string.find(nameLower, "npc") then
+                local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
+                if root then return root end
+            end
+            
+            if obj:FindFirstChildOfClass("Tool") or obj:FindFirstChild("Pan") or obj:FindFirstChild("FryingPan") then
+                local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
+                if root then return root end
+            end
+        end
+    end
+    
+    for _, gui in ipairs(Workspace:GetDescendants()) do
+        if gui:IsA("TextLabel") and string.find(string.lower(gui.Text), "ready") then
+            local parentPart = gui:FindFirstAncestorOfClass("BasePart") or gui:FindFirstAncestorOfClass("Model")
+            if parentPart then
+                return parentPart:IsA("Model") and (parentPart.PrimaryPart or parentPart:FindFirstChild("HumanoidRootPart")) or parentPart
+            end
+        end
+    end
+
+    return nil
+end
+
+SafezoneBtn.MouseButton1Click:Connect(function()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local targetNPC = findSafezoneNPC()
+    if targetNPC then
+        if targetNPC:IsA("BasePart") then
+            character.HumanoidRootPart.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -3)
+        elseif targetNPC:IsA("Model") and targetNPC.PrimaryPart then
+            character.HumanoidRootPart.CFrame = targetNPC.PrimaryPart.CFrame * CFrame.new(0, 0, -3)
+        end
+    else
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("SpawnLocation") then
+                character.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 3.5, 0)
+                break
+            end
+        end
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 6. TELEPORT TO NEAREST SPAWN LOGIC
+--------------------------------------------------------------------------------
+local function teleportToNearestSpawn()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local hrp = character.HumanoidRootPart
+    local nearestSpawn = nil
+    local shortestDistance = math.huge
+    
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("SpawnLocation") then
+            local dist = (hrp.Position - obj.Position).Magnitude
+            if dist < shortestDistance then
+                shortestDistance = dist
+                nearestSpawn = obj
+            end
+        end
+    end
+    
+    if nearestSpawn then
+        hrp.CFrame = nearestSpawn.CFrame + Vector3.new(0, 3.5, 0)
+    end
+end
+
+SpawnBtn.MouseButton1Click:Connect(teleportToNearestSpawn)
+
+--------------------------------------------------------------------------------
+-- 7. TARGET DETECTOR & HIGHLIGHTING
+--------------------------------------------------------------------------------
+local function findBossRoot()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
+            local nameLower = string.lower(obj.Name)
+            if string.find(nameLower, TARGET_NAME) or string.find(nameLower, "ashbound") then
+                local targetPart = obj:FindFirstChild("Torso") 
+                    or obj:FindFirstChild("UpperTorso") 
+                    or obj:FindFirstChild("HumanoidRootPart") 
+                    or obj.PrimaryPart
+                
+                if targetPart then
+                    return obj, targetPart
+                end
+            end
+        end
+    end
+    return nil, nil
+end
+
+local function applyBossHighlight(boss)
+    if not boss:FindFirstChild("CapybaraHighlight") then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "CapybaraHighlight"
+        highlight.FillColor = Color3.fromRGB(240, 140, 40) -- Warm Orange
+        highlight.OutlineColor = Color3.fromRGB(255, 230, 150)
+        highlight.FillTransparency = 0.4
+        highlight.OutlineTransparency = 0
+        highlight.Parent = boss
+    end
+end
+
+local function checkAndHighlightItems()
+    for _, item in ipairs(Workspace:GetChildren()) do
+        if (item:IsA("Tool") or item:IsA("Model") or item:IsA("BasePart")) and not Players:GetPlayerFromCharacter(item) then
+            if not item:FindFirstChild("CapybaraItemHighlight") and (item:FindFirstChild("Handle") or item:IsA("BasePart")) then
+                local yellowHighlight = Instance.new("Highlight")
+                yellowHighlight.Name = "CapybaraItemHighlight"
+                yellowHighlight.FillColor = Color3.fromRGB(255, 200, 50)
+                yellowHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                yellowHighlight.FillTransparency = 0.3
+                yellowHighlight.OutlineTransparency = 0
+                yellowHighlight.Parent = item
+            end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    local boss, bossRoot = findBossRoot()
+    if boss then
+        applyBossHighlight(boss)
+    end
+    
+    if EXPAND_HITBOX_ENABLED and bossRoot then
+        if not originalHitboxData[bossRoot] then
+            originalHitboxData[bossRoot] = {
+                Size = bossRoot.Size,
+                Transparency = bossRoot.Transparency,
+                CanCollide = bossRoot.CanCollide
+            }
+        end
+        bossRoot.Size = Vector3.new(20, 20, 20)
+        bossRoot.Transparency = 0.7
+        bossRoot.BrickColor = BrickColor.new("Deep orange")
+        bossRoot.CanCollide = false
+    end
+
+    if AUTO_PICKUP_ENABLED then
+        checkAndHighlightItems()
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 8. HITBOX EXPANDER TOGGLE
+--------------------------------------------------------------------------------
+HitboxBtn.MouseButton1Click:Connect(function()
+    EXPAND_HITBOX_ENABLED = not EXPAND_HITBOX_ENABLED
+    HitboxBtn.Text = EXPAND_HITBOX_ENABLED and "📦 Expand RakOOF Hitbox: ON" or "📦 Expand RakOOF Hitbox: OFF"
+    HitboxBtn.BackgroundColor3 = EXPAND_HITBOX_ENABLED and Color3.fromRGB(215, 145, 75) or Color3.fromRGB(90, 65, 52)
+    
+    if not EXPAND_HITBOX_ENABLED then
+        for part, data in pairs(originalHitboxData) do
+            if part and part.Parent then
+                part.Size = data.Size
+                part.Transparency = data.Transparency
+                part.CanCollide = data.CanCollide
+            end
+        end
+        table.clear(originalHitboxData)
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 9. BRING RAKOOF LOGIC
+--------------------------------------------------------------------------------
+BringBtn.MouseButton1Click:Connect(function()
+    BRING_BOSS_ENABLED = not BRING_BOSS_ENABLED
+    BringBtn.Text = BRING_BOSS_ENABLED and "🧲 Bring RakOOF: ON" or "🧲 Bring RakOOF: OFF"
+    BringBtn.BackgroundColor3 = BRING_BOSS_ENABLED and Color3.fromRGB(215, 145, 75) or Color3.fromRGB(90, 65, 52)
+    
+    if BRING_BOSS_ENABLED then
+        bringLoop = RunService.Heartbeat:Connect(function()
+            local boss, bossRoot = findBossRoot()
+            local character = LocalPlayer.Character
+            
+            if bossRoot and character and character:FindFirstChild("HumanoidRootPart") then
+                bossRoot.CFrame = character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+            end
+        end)
+    else
+        if bringLoop then
+            bringLoop:Disconnect()
+            bringLoop = nil
+        end
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 10. ITEM PICKUP & SPEED CONTROLS
+--------------------------------------------------------------------------------
+local function teleportToDroppedItems()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:FindFirstChild("CapybaraItemHighlight") then
+            local targetCFrame = nil
+            if obj:IsA("BasePart") then
+                targetCFrame = obj.CFrame
+            elseif obj:FindFirstChild("Handle") then
+                targetCFrame = obj.Handle.CFrame
+            elseif obj.PrimaryPart then
+                targetCFrame = obj.PrimaryPart.CFrame
+            end
+
+            if targetCFrame then
+                character.HumanoidRootPart.CFrame = targetCFrame
+                task.wait(0.1)
+            end
+        end
+    end
+end
+
+AutoLootBtn.MouseButton1Click:Connect(function()
+    AUTO_PICKUP_ENABLED = not AUTO_PICKUP_ENABLED
+    AutoLootBtn.Text = AUTO_PICKUP_ENABLED and "🍊 Auto Pickup: ON" or "🍊 Auto Pickup: OFF"
+    AutoLootBtn.BackgroundColor3 = AUTO_PICKUP_ENABLED and Color3.fromRGB(215, 145, 75) or Color3.fromRGB(90, 65, 52)
+end)
+
+SpeedBtn.MouseButton1Click:Connect(function()
+    SPEED_BOOST_ENABLED = not SPEED_BOOST_ENABLED
+    SpeedBtn.Text = SPEED_BOOST_ENABLED and "⚡ Speed Boost: ON" or "⚡ Speed Boost: OFF"
+    SpeedBtn.BackgroundColor3 = SPEED_BOOST_ENABLED and Color3.fromRGB(215, 145, 75) or Color3.fromRGB(90, 65, 52)
+    
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChildOfClass("Humanoid") then
+        character:FindFirstChildOfClass("Humanoid").WalkSpeed = SPEED_BOOST_ENABLED and 32 or 16
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 11. WEAPON SELECTION & AUTO ATTACK
+--------------------------------------------------------------------------------
+local function getBestWeapon()
+    local character = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not character or not backpack then return nil end
+
+    for _, weaponName in ipairs(WEAPON_PRIORITY) do
+        local equipped = character:FindFirstChild(weaponName)
+        if equipped and equipped:IsA("Tool") then return equipped end
+        
+        local inBackpack = backpack:FindFirstChild(weaponName)
+        if inBackpack and inBackpack:IsA("Tool") then return inBackpack end
+    end
+    
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then return tool end
+    end
+
+    return nil
+end
+
+local function equipAndAttack()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local bestTool = getBestWeapon()
+    
+    if humanoid and bestTool then
+        if bestTool.Parent ~= character then
+            humanoid:EquipTool(bestTool)
+        end
+        bestTool:Activate()
+    end
+end
+
+TPBtn.MouseButton1Click:Connect(function()
+    local boss, bossRoot = findBossRoot()
+    local character = LocalPlayer.Character
+    if bossRoot and character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 3)
+    end
+end)
+
+AutoKillBtn.MouseButton1Click:Connect(function()
+    AUTO_KILL_ENABLED = not AUTO_KILL_ENABLED
+    AutoKillBtn.Text = AUTO_KILL_ENABLED and "⚔️ Auto Attack: ON" or "⚔️ Auto Attack: OFF"
+    AutoKillBtn.BackgroundColor3 = AUTO_KILL_ENABLED and Color3.fromRGB(215, 145, 75) or Color3.fromRGB(90, 65, 52)
+    
+    if AUTO_KILL_ENABLED then
+        connectionLoop = RunService.Heartbeat:Connect(function()
+            local boss, bossRoot = findBossRoot()
+            local character = LocalPlayer.Character
+            
+            if bossRoot and character and character:FindFirstChild("HumanoidRootPart") then
+                character.HumanoidRootPart.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 3)
+                equipAndAttack()
+            else
+                if AUTO_PICKUP_ENABLED then
+                    teleportToDroppedItems()
+                end
+            end
+        end)
+    else
+        if connectionLoop then
+            connectionLoop:Disconnect()
+            connectionLoop = nil
+        end
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- 12. NO FOG / FULLBRIGHT TOGGLE
+--------------------------------------------------------------------------------
+local defaultFogEnd = Lighting.FogEnd
+local defaultBrightness = Lighting.Brightness
+local defaultGlobalShadows = Lighting.GlobalShadows
+local noFogActive = false
+
+FogBtn.MouseButton1Click:Connect(function()
+    noFogActive = not noFogActive
+    FogBtn.Text = noFogActive and "💡 No Fog / Fullbright: ON" or "💡 No Fog / Fullbright: OFF"
+    FogBtn.BackgroundColor3 = noFogActive and Color3.fromRGB(215, 145, 75) or Color3.fromRGB(90, 65, 52)
+    
+    if noFogActive then
+        Lighting.FogEnd = 9e9
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
+    else
+        Lighting.FogEnd = defaultFogEnd
+        Lighting.Brightness = defaultBrightness
+        Lighting.GlobalShadows = defaultGlobalShadows
+    end
+end)
