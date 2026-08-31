@@ -1,21 +1,5 @@
--- Fetch external raw script safely from GitHub
-local success, rawScript = pcall(function()
-    return game:HttpGet("https://raw.githubusercontent.com/ImACoolDEV/CapyBara/main/Capybara%20Hub")
-end)
-
-if success and rawScript then
-    local func, err = loadstring(rawScript)
-    if func then
-        task.spawn(func)
-    else
-        warn("Lua syntax error in GitHub script:", err)
-    end
-else
-    warn("Failed to fetch script from GitHub URL.")
-end
-
 --------------------------------------------------------------------------------
--- CAPYBARA HUB - TOOL GIVER INTEGRATION
+-- CAPYBARA HUB - TOOL GIVER & LEADERSTATS SYSTEM
 --------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -31,25 +15,27 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.RightControl
 local targetToolName = "TaurusJudge"
+local pointsAddAmount = 100
 
 local SPEED_BOOST_ENABLED = false
-local noFogActive = false
+local AUTO_POINTS_ENABLED = false
+local autoPointsLoop = nil
 
--- Function to search game storage and give the requested tool
-local function giveTool(toolName)
-    if not toolName or toolName == "" then
-        warn("No tool name provided.")
-        return false
-    end
+--------------------------------------------------------------------------------
+-- TOOL GIVER LOGIC
+--------------------------------------------------------------------------------
+local function giveToolToInventory(toolName)
+    if not toolName or toolName == "" then return false end
 
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    local starterGear = LocalPlayer:FindFirstChild("StarterGear")
 
-    -- Search places where tools are normally stored
+    -- Search game directories for the tool
     local searchLocations = {
         ReplicatedStorage,
         Workspace,
-        game:GetService("Lighting")
+        Lighting,
+        game:GetService("ServerStorage") -- May fail client-side if restricted, but safe to check
     }
 
     local foundTool = nil
@@ -65,28 +51,47 @@ local function giveTool(toolName)
     end
 
     if foundTool then
-        local toolClone = foundTool:Clone()
+        -- Clone and insert into Backpack
         if backpack then
-            toolClone.Parent = backpack
-            print("Successfully gave tool: " .. toolClone.Name .. " to Backpack!")
+            local clonedTool = foundTool:Clone()
+            clonedTool.Parent = backpack
+        end
+        -- Also place in StarterGear so it persists on respawn if supported
+        if starterGear then
+            local clonedTool2 = foundTool:Clone()
+            clonedTool2.Parent = starterGear
+        end
+        return true
+    end
+
+    return false
+end
+
+--------------------------------------------------------------------------------
+-- LEADERSTATS LOGIC
+--------------------------------------------------------------------------------
+local function addPoints(amount)
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    if leaderstats then
+        local points = leaderstats:FindFirstChild("Points")
+        if points then
+            points.Value = points.Value + amount
             return true
         end
-    else
-        warn("Tool '" .. toolName .. "' was not found in ReplicatedStorage, Workspace, or Lighting.")
-        return false
     end
+    return false
 end
 
 --------------------------------------------------------------------------------
 -- GUI CREATION
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CapybaraHubToolGiver"
+ScreenGui.Name = "CapybaraHubToolsStats"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 600)
+MainFrame.Size = UDim2.new(0, 360, 0, 620)
 MainFrame.Position = UDim2.new(0.5, -180, 0.3, -250)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
@@ -156,7 +161,7 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(1, 0, 0, 15)
 SubTitle.Position = UDim2.new(0, 16, 0, 32)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Tool Giver Edition • [RightCtrl]"
+SubTitle.Text = "Inventory Giver & Stats • [RightCtrl]"
 SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
 SubTitle.Font = Enum.Font.GothamMedium
@@ -196,7 +201,7 @@ ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(235, 140, 50)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 520)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 540)
 ScrollingFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
@@ -241,9 +246,9 @@ local function CreateButton(text, order, initialActive)
     return btn, stroke
 end
 
--- TOOL GIVER UI ELEMENTS
+-- TOOL INPUT UI
 local ToolInputFrame = Instance.new("Frame")
-ToolInputFrame.Size = UDim2.new(0.96, 0, 0, 50)
+ToolInputFrame.Size = UDim2.new(0.96, 0, 0, 48)
 ToolInputFrame.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
 ToolInputFrame.BackgroundTransparency = 0.2
 ToolInputFrame.LayoutOrder = 1
@@ -254,28 +259,24 @@ ToolInputCorner.CornerRadius = UDim.new(0, 12)
 ToolInputCorner.Parent = ToolInputFrame
 
 local ToolTextBox = Instance.new("TextBox")
-ToolTextBox.Size = UDim2.new(0.9, 0, 0.7, 0)
-ToolTextBox.Position = UDim2.new(0.05, 0, 0.15, 0)
+ToolTextBox.Size = UDim2.new(0.9, 0, 0.8, 0)
+ToolTextBox.Position = UDim2.new(0.05, 0, 0.1, 0)
 ToolTextBox.BackgroundTransparency = 1
 ToolTextBox.Text = targetToolName
-ToolTextBox.PlaceholderText = "Enter Tool Name Here..."
+ToolTextBox.PlaceholderText = "Enter Tool Name..."
 ToolTextBox.TextColor3 = Color3.fromRGB(255, 230, 200)
 ToolTextBox.Font = Enum.Font.GothamMedium
 ToolTextBox.TextSize = 13
 ToolTextBox.Parent = ToolInputFrame
 
-ToolTextBox.FocusLost:Connect(function()
-    if ToolTextBox.Text ~= "" then
-        targetToolName = ToolTextBox.Text
-    end
-end)
-
-local GiveToolBtn, GiveToolStroke = CreateButton("🎁 Give Tool", 2, false)
-local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 3, false)
-local FogBtn, FogStroke = CreateButton("💡 No Fog / Fullbright: OFF", 4, false)
+-- UI ELEMENTS
+local GiveToolBtn, GiveToolStroke = CreateButton("🎁 Copy Tool to Inventory", 2, false)
+local AddPointsBtn, AddPointsStroke = CreateButton("🪙 Add +100 Points", 3, false)
+local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 4, false)
+local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 5, false)
 
 --------------------------------------------------------------------------------
--- HANDLERS
+-- LISTENERS & HANDLERS
 --------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == TOGGLE_KEY then
@@ -283,21 +284,54 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
+-- Give Tool Handler
 GiveToolBtn.MouseButton1Click:Connect(function()
     local nameToGive = ToolTextBox.Text ~= "" and ToolTextBox.Text or targetToolName
-    local successGive = giveTool(nameToGive)
+    local successGive = giveToolToInventory(nameToGive)
     
     if successGive then
-        GiveToolBtn.Text = "✅ Given: " .. nameToGive
+        GiveToolBtn.Text = "✅ Copied " .. nameToGive .. " to Inventory!"
     else
-        GiveToolBtn.Text = "❌ Tool Not Found!"
+        GiveToolBtn.Text = "❌ Tool Not Found in Workspace/Storage!"
     end
     
     task.delay(2, function()
-        GiveToolBtn.Text = "🎁 Give Tool"
+        GiveToolBtn.Text = "🎁 Copy Tool to Inventory"
     end)
 end)
 
+-- Single Points Addition
+AddPointsBtn.MouseButton1Click:Connect(function()
+    local successAdd = addPoints(pointsAddAmount)
+    if successAdd then
+        AddPointsBtn.Text = "✅ Added +" .. pointsAddAmount .. " Points!"
+    else
+        AddPointsBtn.Text = "❌ Leaderstats 'Points' Not Found!"
+    end
+    
+    task.delay(2, function()
+        AddPointsBtn.Text = "🪙 Add +100 Points"
+    end)
+end)
+
+-- Auto Farm Points Loop
+AutoPointsBtn.MouseButton1Click:Connect(function()
+    AUTO_POINTS_ENABLED = not AUTO_POINTS_ENABLED
+    AutoPointsBtn.Text = AUTO_POINTS_ENABLED and "🔄 Auto Farm Points: ON" or "🔄 Auto Farm Points: OFF"
+    AutoPointsBtn.BackgroundColor3 = AUTO_POINTS_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    AutoPointsStroke.Color = AUTO_POINTS_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if AUTO_POINTS_ENABLED then
+        task.spawn(function()
+            while AUTO_POINTS_ENABLED do
+                addPoints(10)
+                task.wait(0.5)
+            end
+        end)
+    end
+end)
+
+-- Speed Boost
 SpeedBtn.MouseButton1Click:Connect(function()
     SPEED_BOOST_ENABLED = not SPEED_BOOST_ENABLED
     SpeedBtn.Text = SPEED_BOOST_ENABLED and "⚡ Speed Boost: ON" or "⚡ Speed Boost: OFF"
@@ -308,16 +342,4 @@ SpeedBtn.MouseButton1Click:Connect(function()
     if character and character:FindFirstChildOfClass("Humanoid") then
         character:FindFirstChildOfClass("Humanoid").WalkSpeed = SPEED_BOOST_ENABLED and 32 or 16
     end
-end)
-
-local defaultFogEnd, defaultBrightness = Lighting.FogEnd, Lighting.Brightness
-
-FogBtn.MouseButton1Click:Connect(function()
-    noFogActive = not noFogActive
-    FogBtn.Text = noFogActive and "💡 No Fog / Fullbright: ON" or "💡 No Fog / Fullbright: OFF"
-    FogBtn.BackgroundColor3 = noFogActive and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    FogStroke.Color = noFogActive and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-    
-    Lighting.FogEnd = noFogActive and 9e9 or defaultFogEnd
-    Lighting.Brightness = noFogActive and 2 or defaultBrightness
 end)
