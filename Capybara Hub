@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- CAPYBARA HUB - TOOL GIVER & LEADERSTATS SYSTEM
+-- CAPYBARA HUB - TOOL GIVER & STATS SYSTEM
 --------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -12,17 +12,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Configuration
+-- Configuration Variables
 local TOGGLE_KEY = Enum.KeyCode.RightControl
 local targetToolName = "TaurusJudge"
-local pointsAddAmount = 100
+local customPointsAmount = 100
+local customKillsAmount = 10
 
 local SPEED_BOOST_ENABLED = false
 local AUTO_POINTS_ENABLED = false
-local autoPointsLoop = nil
 
 --------------------------------------------------------------------------------
--- TOOL GIVER LOGIC
+-- TOOL & LEADERSTATS LOGIC
 --------------------------------------------------------------------------------
 local function giveToolToInventory(toolName)
     if not toolName or toolName == "" then return false end
@@ -30,12 +30,11 @@ local function giveToolToInventory(toolName)
     local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
     local starterGear = LocalPlayer:FindFirstChild("StarterGear")
 
-    -- Search game directories for the tool
     local searchLocations = {
         ReplicatedStorage,
         Workspace,
         Lighting,
-        game:GetService("ServerStorage") -- May fail client-side if restricted, but safe to check
+        game:GetService("ServerStorage")
     }
 
     local foundTool = nil
@@ -51,12 +50,10 @@ local function giveToolToInventory(toolName)
     end
 
     if foundTool then
-        -- Clone and insert into Backpack
         if backpack then
             local clonedTool = foundTool:Clone()
             clonedTool.Parent = backpack
         end
-        -- Also place in StarterGear so it persists on respawn if supported
         if starterGear then
             local clonedTool2 = foundTool:Clone()
             clonedTool2.Parent = starterGear
@@ -67,15 +64,12 @@ local function giveToolToInventory(toolName)
     return false
 end
 
---------------------------------------------------------------------------------
--- LEADERSTATS LOGIC
---------------------------------------------------------------------------------
-local function addPoints(amount)
+local function modifyStat(statName, amount)
     local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
     if leaderstats then
-        local points = leaderstats:FindFirstChild("Points")
-        if points then
-            points.Value = points.Value + amount
+        local stat = leaderstats:FindFirstChild(statName)
+        if stat then
+            stat.Value = stat.Value + amount
             return true
         end
     end
@@ -91,7 +85,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 620)
+MainFrame.Size = UDim2.new(0, 360, 0, 680)
 MainFrame.Position = UDim2.new(0.5, -180, 0.3, -250)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
@@ -161,14 +155,14 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(1, 0, 0, 15)
 SubTitle.Position = UDim2.new(0, 16, 0, 32)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Inventory Giver & Stats • [RightCtrl]"
+SubTitle.Text = "Tools, Points & Kills • [RightCtrl]"
 SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
 SubTitle.Font = Enum.Font.GothamMedium
 SubTitle.TextSize = 10
 SubTitle.Parent = TitleBar
 
--- Window Dragging
+-- Dragging Functionality
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -201,7 +195,7 @@ ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(235, 140, 50)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 540)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
 ScrollingFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
@@ -246,37 +240,47 @@ local function CreateButton(text, order, initialActive)
     return btn, stroke
 end
 
--- TOOL INPUT UI
-local ToolInputFrame = Instance.new("Frame")
-ToolInputFrame.Size = UDim2.new(0.96, 0, 0, 48)
-ToolInputFrame.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
-ToolInputFrame.BackgroundTransparency = 0.2
-ToolInputFrame.LayoutOrder = 1
-ToolInputFrame.Parent = ScrollingFrame
+local function CreateInputBox(placeholderText, defaultText, order)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.96, 0, 0, 42)
+    frame.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
+    frame.BackgroundTransparency = 0.2
+    frame.LayoutOrder = order
+    frame.Parent = ScrollingFrame
 
-local ToolInputCorner = Instance.new("UICorner")
-ToolInputCorner.CornerRadius = UDim.new(0, 12)
-ToolInputCorner.Parent = ToolInputFrame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
 
-local ToolTextBox = Instance.new("TextBox")
-ToolTextBox.Size = UDim2.new(0.9, 0, 0.8, 0)
-ToolTextBox.Position = UDim2.new(0.05, 0, 0.1, 0)
-ToolTextBox.BackgroundTransparency = 1
-ToolTextBox.Text = targetToolName
-ToolTextBox.PlaceholderText = "Enter Tool Name..."
-ToolTextBox.TextColor3 = Color3.fromRGB(255, 230, 200)
-ToolTextBox.Font = Enum.Font.GothamMedium
-ToolTextBox.TextSize = 13
-ToolTextBox.Parent = ToolInputFrame
+    local textBox = Instance.new("TextBox")
+    textBox.Size = UDim2.new(0.9, 0, 0.8, 0)
+    textBox.Position = UDim2.new(0.05, 0, 0.1, 0)
+    textBox.BackgroundTransparency = 1
+    textBox.Text = tostring(defaultText)
+    textBox.PlaceholderText = placeholderText
+    textBox.TextColor3 = Color3.fromRGB(255, 230, 200)
+    textBox.Font = Enum.Font.GothamMedium
+    textBox.TextSize = 13
+    textBox.Parent = frame
 
--- UI ELEMENTS
+    return textBox
+end
+
+-- UI INPUT FIELDS
+local ToolTextBox = CreateInputBox("Enter Tool Name...", targetToolName, 1)
 local GiveToolBtn, GiveToolStroke = CreateButton("🎁 Copy Tool to Inventory", 2, false)
-local AddPointsBtn, AddPointsStroke = CreateButton("🪙 Add +100 Points", 3, false)
-local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 4, false)
-local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 5, false)
+
+local PointsTextBox = CreateInputBox("Enter Points Amount...", customPointsAmount, 3)
+local AddPointsBtn, AddPointsStroke = CreateButton("🪙 Add Points", 4, false)
+
+local KillsTextBox = CreateInputBox("Enter Kills Amount...", customKillsAmount, 5)
+local AddKillsBtn, AddKillsStroke = CreateButton("⚔️ Add Kills", 6, false)
+
+local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 7, false)
+local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 8, false)
 
 --------------------------------------------------------------------------------
--- LISTENERS & HANDLERS
+-- EVENT HANDLERS
 --------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == TOGGLE_KEY then
@@ -286,13 +290,13 @@ end)
 
 -- Give Tool Handler
 GiveToolBtn.MouseButton1Click:Connect(function()
-    local nameToGive = ToolTextBox.Text ~= "" and ToolTextBox.Text or targetToolName
-    local successGive = giveToolToInventory(nameToGive)
+    local toolName = ToolTextBox.Text ~= "" and ToolTextBox.Text or targetToolName
+    local success = giveToolToInventory(toolName)
     
-    if successGive then
-        GiveToolBtn.Text = "✅ Copied " .. nameToGive .. " to Inventory!"
+    if success then
+        GiveToolBtn.Text = "✅ Copied " .. toolName .. " to Inventory!"
     else
-        GiveToolBtn.Text = "❌ Tool Not Found in Workspace/Storage!"
+        GiveToolBtn.Text = "❌ Tool Not Found!"
     end
     
     task.delay(2, function()
@@ -300,17 +304,35 @@ GiveToolBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Single Points Addition
+-- Add Points Handler
 AddPointsBtn.MouseButton1Click:Connect(function()
-    local successAdd = addPoints(pointsAddAmount)
-    if successAdd then
-        AddPointsBtn.Text = "✅ Added +" .. pointsAddAmount .. " Points!"
+    local pointsAmount = tonumber(PointsTextBox.Text) or customPointsAmount
+    local success = modifyStat("Points", pointsAmount)
+    
+    if success then
+        AddPointsBtn.Text = "✅ Added +" .. pointsAmount .. " Points!"
     else
         AddPointsBtn.Text = "❌ Leaderstats 'Points' Not Found!"
     end
     
     task.delay(2, function()
-        AddPointsBtn.Text = "🪙 Add +100 Points"
+        AddPointsBtn.Text = "🪙 Add Points"
+    end)
+end)
+
+-- Add Kills Handler
+AddKillsBtn.MouseButton1Click:Connect(function()
+    local killsAmount = tonumber(KillsTextBox.Text) or customKillsAmount
+    local success = modifyStat("Kills", killsAmount)
+    
+    if success then
+        AddKillsBtn.Text = "✅ Added +" .. killsAmount .. " Kills!"
+    else
+        AddKillsBtn.Text = "❌ Leaderstats 'Kills' Not Found!"
+    end
+    
+    task.delay(2, function()
+        AddKillsBtn.Text = "⚔️ Add Kills"
     end)
 end)
 
@@ -324,7 +346,8 @@ AutoPointsBtn.MouseButton1Click:Connect(function()
     if AUTO_POINTS_ENABLED then
         task.spawn(function()
             while AUTO_POINTS_ENABLED do
-                addPoints(10)
+                local pointsAmount = tonumber(PointsTextBox.Text) or 10
+                modifyStat("Points", pointsAmount)
                 task.wait(0.5)
             end
         end)
