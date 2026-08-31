@@ -1,5 +1,21 @@
+-- Fetch external raw script safely from GitHub
+local success, rawScript = pcall(function()
+    return game:HttpGet("https://raw.githubusercontent.com/ImACoolDEV/CapyBara/main/Capybara%20Hub")
+end)
+
+if success and rawScript then
+    local func, err = loadstring(rawScript)
+    if func then
+        task.spawn(func)
+    else
+        warn("Lua syntax error in GitHub script:", err)
+    end
+else
+    warn("Failed to fetch script from GitHub URL.")
+end
+
 --------------------------------------------------------------------------------
--- CAPYBARA HUB - FULL GUI & UTILITY CODE
+-- CAPYBARA HUB - INTEGRATED GUN MODIFIER & UI
 --------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -13,8 +29,12 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Configuration Flags
+-- Configuration
+local GITHUB_CONFIG_URL = "https://raw.githubusercontent.com/ImACoolDEV/CapyBara/main/gun_config.json"
+local DEFAULT_GUN_NAME = "TaurusJudge"
 local TARGET_NAME = "rakoof"
+local TOGGLE_KEY = Enum.KeyCode.RightControl
+
 local AUTO_KILL_ENABLED = false
 local AUTO_PICKUP_ENABLED = true
 local BRING_BOSS_ENABLED = false
@@ -22,52 +42,66 @@ local EXPAND_HITBOX_ENABLED = false
 local SPEED_BOOST_ENABLED = false
 local ANTI_SKY_SPAWN_ENABLED = false
 local AUTO_GUN_MOD_ENABLED = false
-local TOGGLE_KEY = Enum.KeyCode.RightControl 
 
 local connectionLoop, bringLoop, antiSkyLoop, gunModLoop = nil, nil, nil, nil
-
--- Storage & Dynamic Inputs
 local originalHitboxData = {}
 local modifiedWeapons = {}
-local customWeaponNameInput = "Capybara Blaster"
+local customWeaponNameInput = DEFAULT_GUN_NAME
 
--- GitHub Dynamic Priority Config
-local GITHUB_CONFIG_URL = "https://raw.githubusercontent.com/YourUsername/CapybaraHub/main/configs/weapons.json"
-local WEAPON_PRIORITY = {"TormentumAxe", "Murasama", "Ruinstrikers", "StunStick"}
-
-task.spawn(function()
-    local cfgSuccess, response = pcall(function() return game:HttpGet(GITHUB_CONFIG_URL) end)
+-- GitHub Target Fetcher
+local function getTargetGunName()
+    local cfgSuccess, response = pcall(function()
+        return game:HttpGet(GITHUB_CONFIG_URL)
+    end)
+    
     if cfgSuccess and response then
-        local decoded = HttpService:JSONDecode(response)
-        if decoded and type(decoded.priority) == "table" then
-            WEAPON_PRIORITY = decoded.priority
+        local decodeSuccess, decoded = pcall(function()
+            return HttpService:JSONDecode(response)
+        end)
+        if decodeSuccess and decoded and decoded.GunName then
+            return decoded.GunName
         end
     end
-end)
+    return customWeaponNameInput
+end
 
---------------------------------------------------------------------------------
--- HELPER: SAFE BEHIND TELEPORT
---------------------------------------------------------------------------------
-local function safeTeleportBehind(targetRoot)
-    local character = LocalPlayer.Character
-    if not character then return end
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp or not targetRoot then return end
-
-    for _, part in ipairs(character:GetChildren()) do
-        if part:IsA("BasePart") then part.CanCollide = false end
+-- Core ModuleScript Modifier
+local function modifyGunModule(tool)
+    local settingScript = tool:FindFirstChild("Setting")
+    if settingScript and settingScript:IsA("ModuleScript") then
+        local success, config = pcall(require, settingScript)
+        if success and type(config) == "table" then
+            -- 1. Infinite Ammo
+            config.LimitedClipEnabled = false 
+            config.AmmoPerClip = math.huge
+            config.MaxClip = math.huge
+            
+            -- 2. No Spread
+            config.Spread = 0
+            config.SpreadRedution = 0
+            
+            -- 3. No Recoil
+            config.CameraShakingEnabled = false
+            
+            -- 4. Fast Fire Rate & Auto
+            config.FireRate = 0
+            config.Auto = true
+            config.BurstFireEnabled = false
+            config.DelayBeforeFiring = 0
+            config.DelayAfterFiring = 0
+            
+            print("Successfully injected ModuleScript settings into:", tool.Name)
+            return true
+        end
     end
-
-    local targetCF = targetRoot.CFrame
-    local behindPosition = targetCF.Position - (targetCF.LookVector * 3.5)
-    hrp.CFrame = CFrame.new(behindPosition, targetCF.Position)
+    return false
 end
 
 --------------------------------------------------------------------------------
--- GUI SETUP
+-- GUI CREATION
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CapybaraHubUltraFancy"
+ScreenGui.Name = "CapybaraHubCombined"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
@@ -78,7 +112,6 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.ClipsDescendants = false
 MainFrame.Parent = ScreenGui
 
 local FrameCorner = Instance.new("UICorner")
@@ -143,33 +176,14 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(1, 0, 0, 15)
 SubTitle.Position = UDim2.new(0, 16, 0, 32)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Premium Utility • [RightCtrl]"
+SubTitle.Text = "Gun Mod & Utilities • [RightCtrl]"
 SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
 SubTitle.Font = Enum.Font.GothamMedium
 SubTitle.TextSize = 10
 SubTitle.Parent = TitleBar
 
-local CapybaraLabel = Instance.new("TextLabel")
-CapybaraLabel.Size = UDim2.new(0, 100, 0, 35)
-CapybaraLabel.Position = UDim2.new(1, -110, 0, 10)
-CapybaraLabel.BackgroundTransparency = 1
-CapybaraLabel.Text = "( capy-bara )"
-CapybaraLabel.TextColor3 = Color3.fromRGB(255, 195, 100)
-CapybaraLabel.Font = Enum.Font.Code
-CapybaraLabel.TextSize = 12
-CapybaraLabel.Parent = TitleBar
-
-local capyFrames = {"( capy-bara )", "( chill-mode )", "( 🍊-bara )", "( capy-pullup )"}
-task.spawn(function()
-    local index = 1
-    while task.wait(0.4) do
-        CapybaraLabel.Text = capyFrames[index]
-        index = (index % #capyFrames) + 1
-    end
-end)
-
--- Window Dragging Logic
+-- Window Dragging
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -211,9 +225,6 @@ UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = ScrollingFrame
 
---------------------------------------------------------------------------------
--- BUTTON BUILDER
---------------------------------------------------------------------------------
 local function CreateButton(text, order, initialActive)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.96, 0, 0, 42)
@@ -238,365 +249,82 @@ local function CreateButton(text, order, initialActive)
     stroke.Parent = btn
 
     btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundTransparency = 0.0,
-            Size = UDim2.new(0.98, 0, 0, 42)
-        }):Play()
+        TweenService:Create(btn, TweenInfo.new(0.25), {BackgroundTransparency = 0.0, Size = UDim2.new(0.98, 0, 0, 42)}):Play()
         TweenService:Create(stroke, TweenInfo.new(0.25), {Transparency = 0}):Play()
     end)
 
     btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundTransparency = 0.15,
-            Size = UDim2.new(0.96, 0, 0, 42)
-        }):Play()
+        TweenService:Create(btn, TweenInfo.new(0.25), {BackgroundTransparency = 0.15, Size = UDim2.new(0.96, 0, 0, 42)}):Play()
         TweenService:Create(stroke, TweenInfo.new(0.25), {Transparency = 0.3}):Play()
     end)
     
     return btn, stroke
 end
 
-local SafezoneBtn, SafezoneStroke = CreateButton("🛡️ Safezone (Ready Guy)", 1, false)
-local SpawnBtn, SpawnStroke = CreateButton("📍 Teleport to Nearest Spawn", 2, false)
-local RockBtn, RockStroke = CreateButton("🗿 Teleport to Rock Mesh", 3, false)
-local TPBtn, TPStroke = CreateButton("🎯 Teleport Behind Target", 4, false)
-local BringBtn, BringStroke = CreateButton("🧲 Bring RakOOF: OFF", 5, false)
-local HitboxBtn, HitboxStroke = CreateButton("📦 Expand RakOOF Hitbox: OFF", 6, false)
-local AutoKillBtn, AutoKillStroke = CreateButton("⚔️ Auto Attack: OFF", 7, false)
-local AutoLootBtn, AutoLootStroke = CreateButton("🍊 Auto Pickup: ON", 8, true)
-local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 9, false)
-local FogBtn, FogStroke = CreateButton("💡 No Fog / Fullbright: OFF", 10, false)
-local AntiSkyBtn, AntiSkyStroke = CreateButton("🪂 Anti-Sky Spawning: OFF", 11, false)
-local GunModBtn, GunModStroke = CreateButton("🔫 GitHub Gun Modifier: OFF", 12, false)
-local RenameGunBtn, RenameGunStroke = CreateButton("✏️ Rename Active Weapon: [Custom Name]", 13, false)
+local ApplyModBtn, ApplyModStroke = CreateButton("⚡ Apply Settings Module Mod", 1, false)
+local GunModBtn, GunModStroke = CreateButton("🔫 Auto Gun Loop: OFF", 2, false)
+local RenameGunBtn, RenameGunStroke = CreateButton("✏️ Target Gun: " .. DEFAULT_GUN_NAME, 3, false)
+local SafezoneBtn, SafezoneStroke = CreateButton("🛡️ Safezone (Ready Guy)", 4, false)
+local SpawnBtn, SpawnStroke = CreateButton("📍 Teleport to Nearest Spawn", 5, false)
+local RockBtn, RockStroke = CreateButton("🗿 Teleport to Rock Mesh", 6, false)
+local BringBtn, BringStroke = CreateButton("🧲 Bring Target: OFF", 7, false)
+local HitboxBtn, HitboxStroke = CreateButton("📦 Expand Target Hitbox: OFF", 8, false)
+local AutoKillBtn, AutoKillStroke = CreateButton("⚔️ Auto Attack: OFF", 9, false)
+local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 10, false)
+local FogBtn, FogStroke = CreateButton("💡 No Fog / Fullbright: OFF", 11, false)
+local AntiSkyBtn, AntiSkyStroke = CreateButton("🪂 Anti-Sky Spawning: OFF", 12, false)
 
 --------------------------------------------------------------------------------
--- KEYBIND TOGGLE
+-- HANDLERS & LOGIC
 --------------------------------------------------------------------------------
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == TOGGLE_KEY then
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == TOGGLE_KEY then
         ScreenGui.Enabled = not ScreenGui.Enabled
     end
 end)
 
---------------------------------------------------------------------------------
--- FEATURES & HANDLERS
---------------------------------------------------------------------------------
-RockBtn.MouseButton1Click:Connect(function()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = character.HumanoidRootPart
-    local rockObj = ReplicatedStorage:FindFirstChild("rock", true) or Workspace:FindFirstChild("rock", true)
-    
-    if rockObj then
-        if rockObj:IsA("BasePart") then
-            hrp.CFrame = rockObj.CFrame + Vector3.new(0, 3, 0)
-        elseif rockObj:IsA("Model") then
-            local targetPart = rockObj.PrimaryPart or rockObj:FindFirstChildWhichIsA("BasePart")
-            if targetPart then hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0) end
-        end
-    end
-end)
-
-local function findSafezoneNPC()
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
-            local nameLower = string.lower(obj.Name)
-            if string.find(nameLower, "ready") or string.find(nameLower, "safe") or string.find(nameLower, "spawn") or string.find(nameLower, "npc") then
-                local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
-                if root then return root end
-            end
-        end
-    end
-    return nil
-end
-
-SafezoneBtn.MouseButton1Click:Connect(function()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local targetNPC = findSafezoneNPC()
-    if targetNPC then
-        character.HumanoidRootPart.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -3)
-    else
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("SpawnLocation") then
-                character.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 3.5, 0)
-                break
-            end
-        end
-    end
-end)
-
-SpawnBtn.MouseButton1Click:Connect(function()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = character.HumanoidRootPart
-    local nearestSpawn, shortestDistance = nil, math.huge
-    
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("SpawnLocation") then
-            local dist = (hrp.Position - obj.Position).Magnitude
-            if dist < shortestDistance then
-                shortestDistance = dist
-                nearestSpawn = obj
-            end
-        end
-    end
-    if nearestSpawn then hrp.CFrame = nearestSpawn.CFrame + Vector3.new(0, 3.5, 0) end
-end)
-
-local function findBossRoot()
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
-            local nameLower = string.lower(obj.Name)
-            if string.find(nameLower, TARGET_NAME) or string.find(nameLower, "ashbound") then
-                local targetPart = obj:FindFirstChild("HumanoidRootPart") 
-                    or obj:FindFirstChild("Torso") 
-                    or obj:FindFirstChild("UpperTorso") 
-                    or obj.PrimaryPart
-                if targetPart then return obj, targetPart end
-            end
-        end
-    end
-    return nil, nil
-end
-
-RunService.RenderStepped:Connect(function()
-    local boss, bossRoot = findBossRoot()
-    if boss and not boss:FindFirstChild("CapybaraHighlight") then
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "CapybaraHighlight"
-        highlight.FillColor = Color3.fromRGB(255, 140, 20)
-        highlight.OutlineColor = Color3.fromRGB(255, 230, 150)
-        highlight.FillTransparency = 0.35
-        highlight.OutlineTransparency = 0
-        highlight.Parent = boss
-    end
-    
-    if EXPAND_HITBOX_ENABLED and bossRoot then
-        if not originalHitboxData[bossRoot] then
-            originalHitboxData[bossRoot] = {
-                Size = bossRoot.Size,
-                Transparency = bossRoot.Transparency,
-                CanCollide = bossRoot.CanCollide
-            }
-        end
-        bossRoot.Size = Vector3.new(20, 20, 20)
-        bossRoot.Transparency = 0.7
-        bossRoot.BrickColor = BrickColor.new("Deep orange")
-        bossRoot.CanCollide = false
-    end
-end)
-
-HitboxBtn.MouseButton1Click:Connect(function()
-    EXPAND_HITBOX_ENABLED = not EXPAND_HITBOX_ENABLED
-    HitboxBtn.Text = EXPAND_HITBOX_ENABLED and "📦 Expand RakOOF Hitbox: ON" or "📦 Expand RakOOF Hitbox: OFF"
-    HitboxBtn.BackgroundColor3 = EXPAND_HITBOX_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    HitboxStroke.Color = EXPAND_HITBOX_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-    
-    if not EXPAND_HITBOX_ENABLED then
-        for part, data in pairs(originalHitboxData) do
-            if part and part.Parent then
-                part.Size = data.Size
-                part.Transparency = data.Transparency
-                part.CanCollide = data.CanCollide
-            end
-        end
-        table.clear(originalHitboxData)
-    end
-end)
-
-BringBtn.MouseButton1Click:Connect(function()
-    BRING_BOSS_ENABLED = not BRING_BOSS_ENABLED
-    BringBtn.Text = BRING_BOSS_ENABLED and "🧲 Bring RakOOF: ON" or "🧲 Bring RakOOF: OFF"
-    BringBtn.BackgroundColor3 = BRING_BOSS_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    BringStroke.Color = BRING_BOSS_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-    
-    if BRING_BOSS_ENABLED then
-        bringLoop = RunService.Heartbeat:Connect(function()
-            local boss, bossRoot = findBossRoot()
-            local character = LocalPlayer.Character
-            if bossRoot and character and character:FindFirstChild("HumanoidRootPart") then
-                bossRoot.CFrame = character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3.5)
-            end
-        end)
-    else
-        if bringLoop then bringLoop:Disconnect() bringLoop = nil end
-    end
-end)
-
-AutoLootBtn.MouseButton1Click:Connect(function()
-    AUTO_PICKUP_ENABLED = not AUTO_PICKUP_ENABLED
-    AutoLootBtn.Text = AUTO_PICKUP_ENABLED and "🍊 Auto Pickup: ON" or "🍊 Auto Pickup: OFF"
-    AutoLootBtn.BackgroundColor3 = AUTO_PICKUP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    AutoLootStroke.Color = AUTO_PICKUP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-end)
-
-SpeedBtn.MouseButton1Click:Connect(function()
-    SPEED_BOOST_ENABLED = not SPEED_BOOST_ENABLED
-    SpeedBtn.Text = SPEED_BOOST_ENABLED and "⚡ Speed Boost: ON" or "⚡ Speed Boost: OFF"
-    SpeedBtn.BackgroundColor3 = SPEED_BOOST_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    SpeedStroke.Color = SPEED_BOOST_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-    
-    local character = LocalPlayer.Character
-    if character and character:FindFirstChildOfClass("Humanoid") then
-        character:FindFirstChildOfClass("Humanoid").WalkSpeed = SPEED_BOOST_ENABLED and 32 or 16
-    end
-end)
-
-local function getBestWeapon()
-    local character = LocalPlayer.Character
+-- One-time Apply Settings Mod
+ApplyModBtn.MouseButton1Click:Connect(function()
+    local targetName = getTargetGunName()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
-    if not character or not backpack then return nil end
-
-    for _, weaponName in ipairs(WEAPON_PRIORITY) do
-        local equipped = character:FindFirstChild(weaponName)
-        if equipped and equipped:IsA("Tool") then return equipped end
-        
-        local inBackpack = backpack:FindFirstChild(weaponName)
-        if inBackpack and inBackpack:IsA("Tool") then return inBackpack end
-    end
-    
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then return tool end
-    end
-    return nil
-end
-
-local function equipAndAttack()
     local character = LocalPlayer.Character
-    if not character then return end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local bestTool = getBestWeapon()
     
-    if humanoid and bestTool then
-        if bestTool.Parent ~= character then humanoid:EquipTool(bestTool) end
-        bestTool:Activate()
-    end
-end
+    local tool = (backpack and backpack:FindFirstChild(targetName)) 
+        or (character and character:FindFirstChild(targetName))
 
-TPBtn.MouseButton1Click:Connect(function()
-    local _, bossRoot = findBossRoot()
-    if bossRoot then safeTeleportBehind(bossRoot) end
-end)
-
-AutoKillBtn.MouseButton1Click:Connect(function()
-    AUTO_KILL_ENABLED = not AUTO_KILL_ENABLED
-    AutoKillBtn.Text = AUTO_KILL_ENABLED and "⚔️ Auto Attack: ON" or "⚔️ Auto Attack: OFF"
-    AutoKillBtn.BackgroundColor3 = AUTO_KILL_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    AutoKillStroke.Color = AUTO_KILL_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-    
-    if AUTO_KILL_ENABLED then
-        connectionLoop = RunService.Heartbeat:Connect(function()
-            local _, bossRoot = findBossRoot()
-            if bossRoot then
-                safeTeleportBehind(bossRoot)
-                equipAndAttack()
-            end
-        end)
+    if tool then
+        local modified = modifyGunModule(tool)
+        if modified then
+            ApplyModBtn.Text = "✅ Modified " .. targetName .. "!"
+            task.delay(2, function() ApplyModBtn.Text = "⚡ Apply Settings Module Mod" end)
+        else
+            warn("Could not find 'Setting' ModuleScript in " .. targetName)
+        end
     else
-        if connectionLoop then connectionLoop:Disconnect() connectionLoop = nil end
+        warn("Gun '" .. targetName .. "' not found in Backpack or Character.")
     end
 end)
 
-local defaultFogEnd = Lighting.FogEnd
-local defaultBrightness = Lighting.Brightness
-local defaultGlobalShadows = Lighting.GlobalShadows
-local noFogActive = false
-
-FogBtn.MouseButton1Click:Connect(function()
-    noFogActive = not noFogActive
-    FogBtn.Text = noFogActive and "💡 No Fog / Fullbright: ON" or "💡 No Fog / Fullbright: OFF"
-    FogBtn.BackgroundColor3 = noFogActive and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    FogStroke.Color = noFogActive and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-    
-    if noFogActive then
-        Lighting.FogEnd = 9e9
-        Lighting.Brightness = 2
-        Lighting.GlobalShadows = false
-    else
-        Lighting.FogEnd = defaultFogEnd
-        Lighting.Brightness = defaultBrightness
-        Lighting.GlobalShadows = defaultGlobalShadows
-    end
-end)
-
-AntiSkyBtn.MouseButton1Click:Connect(function()
-    ANTI_SKY_SPAWN_ENABLED = not ANTI_SKY_SPAWN_ENABLED
-    AntiSkyBtn.Text = ANTI_SKY_SPAWN_ENABLED and "🪂 Anti-Sky Spawning: ON" or "🪂 Anti-Sky Spawning: OFF"
-    AntiSkyBtn.BackgroundColor3 = ANTI_SKY_SPAWN_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    AntiSkyStroke.Color = ANTI_SKY_SPAWN_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-
-    if ANTI_SKY_SPAWN_ENABLED then
-        antiSkyLoop = RunService.Heartbeat:Connect(function()
-            local character = LocalPlayer.Character
-            if not character then return end
-            local hrp = character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-
-            if hrp.Position.Y > 300 or hrp.AssemblyLinearVelocity.Y < -150 then
-                local nearestSpawn, shortestDistance = nil, math.huge
-                for _, obj in ipairs(Workspace:GetDescendants()) do
-                    if obj:IsA("SpawnLocation") then
-                        local dist = (hrp.Position - obj.Position).Magnitude
-                        if dist < shortestDistance then
-                            shortestDistance = dist
-                            nearestSpawn = obj
-                        end
-                    end
-                end
-
-                if nearestSpawn then
-                    hrp.CFrame = nearestSpawn.CFrame + Vector3.new(0, 3.5, 0)
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                else
-                    hrp.CFrame = CFrame.new(hrp.Position.X, 10, hrp.Position.Z)
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                end
-            end
-        end)
-    else
-        if antiSkyLoop then antiSkyLoop:Disconnect() antiSkyLoop = nil end
-    end
-end)
-
+-- Auto Loop Modifier (Checks setting script continually)
 GunModBtn.MouseButton1Click:Connect(function()
     AUTO_GUN_MOD_ENABLED = not AUTO_GUN_MOD_ENABLED
-    GunModBtn.Text = AUTO_GUN_MOD_ENABLED and "🔫 GitHub Gun Modifier: ON" or "🔫 GitHub Gun Modifier: OFF"
+    GunModBtn.Text = AUTO_GUN_MOD_ENABLED and "🔫 Auto Gun Loop: ON" or "🔫 Auto Gun Loop: OFF"
     GunModBtn.BackgroundColor3 = AUTO_GUN_MOD_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     GunModStroke.Color = AUTO_GUN_MOD_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
     if AUTO_GUN_MOD_ENABLED then
         gunModLoop = RunService.Heartbeat:Connect(function()
-            local character = LocalPlayer.Character
+            local targetName = getTargetGunName()
             local backpack = LocalPlayer:FindFirstChild("Backpack")
-            if not character or not backpack then return end
-
-            local containers = {character, backpack}
+            local character = LocalPlayer.Character
+            
+            local containers = {backpack, character}
             for _, container in ipairs(containers) do
-                for _, tool in ipairs(container:GetChildren()) do
-                    if tool:IsA("Tool") then
-                        for _, wName in ipairs(WEAPON_PRIORITY) do
-                            if string.find(string.lower(tool.Name), string.lower(wName)) or string.find(string.lower(tool.Name), "gun") or string.find(string.lower(tool.Name), "rifle") then
-                                if not modifiedWeapons[tool] then
-                                    modifiedWeapons[tool] = true
-                                    for _, desc in ipairs(tool:GetDescendants()) do
-                                        if desc:IsA("NumberValue") or desc:IsA("IntValue") then
-                                            local dName = string.lower(desc.Name)
-                                            if string.find(dName, "damage") or string.find(dName, "power") then
-                                                desc.Value = desc.Value * 5
-                                            elseif string.find(dName, "fire") or string.find(dName, "rate") or string.find(dName, "cooldown") then
-                                                desc.Value = 0.01
-                                            elseif string.find(dName, "spread") or string.find(dName, "recoil") then
-                                                desc.Value = 0
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
+                if container then
+                    local tool = container:FindFirstChild(targetName)
+                    if tool and tool:IsA("Tool") and not modifiedWeapons[tool] then
+                        local success = modifyGunModule(tool)
+                        if success then modifiedWeapons[tool] = true end
                     end
                 end
             end
@@ -607,9 +335,9 @@ GunModBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Dynamic Gun Target Switcher
 RenameGunBtn.MouseButton1Click:Connect(function()
     local PromptGui = Instance.new("ScreenGui")
-    PromptGui.Name = "CapybaraRenamePromptFancy"
     PromptGui.Parent = PlayerGui
 
     local Overlay = Instance.new("Frame")
@@ -637,7 +365,7 @@ RenameGunBtn.MouseButton1Click:Connect(function()
     local PLabel = Instance.new("TextLabel")
     PLabel.Size = UDim2.new(1, 0, 0, 40)
     PLabel.BackgroundTransparency = 1
-    PLabel.Text = "✏️ Custom Gun Rename"
+    PLabel.Text = "✏️ Enter Gun Name"
     PLabel.TextColor3 = Color3.fromRGB(255, 230, 200)
     PLabel.Font = Enum.Font.GothamBold
     PLabel.TextSize = 15
@@ -648,7 +376,7 @@ RenameGunBtn.MouseButton1Click:Connect(function()
     TextBox.Position = UDim2.new(0.06, 0, 0, 48)
     TextBox.BackgroundColor3 = Color3.fromRGB(55, 38, 28)
     TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextBox.PlaceholderText = "Type gun name here..."
+    TextBox.PlaceholderText = "e.g. TaurusJudge"
     TextBox.Text = customWeaponNameInput
     TextBox.Font = Enum.Font.Gotham
     TextBox.TextSize = 13
@@ -662,7 +390,7 @@ RenameGunBtn.MouseButton1Click:Connect(function()
     SubmitBtn.Size = UDim2.new(0.88, 0, 0, 36)
     SubmitBtn.Position = UDim2.new(0.06, 0, 0, 100)
     SubmitBtn.BackgroundColor3 = Color3.fromRGB(235, 140, 50)
-    SubmitBtn.Text = "Apply Name"
+    SubmitBtn.Text = "Update Target"
     SubmitBtn.TextColor3 = Color3.fromRGB(30, 20, 15)
     SubmitBtn.Font = Enum.Font.GothamBold
     SubmitBtn.TextSize = 13
@@ -675,20 +403,34 @@ RenameGunBtn.MouseButton1Click:Connect(function()
     SubmitBtn.MouseButton1Click:Connect(function()
         if TextBox.Text ~= "" then
             customWeaponNameInput = TextBox.Text
-            RenameGunBtn.Text = "✏️ Rename Active Weapon: " .. customWeaponNameInput
-            
-            local character = LocalPlayer.Character
-            if character then
-                for _, tool in ipairs(character:GetChildren()) do
-                    if tool:IsA("Tool") then
-                        tool.Name = customWeaponNameInput
-                        for _, desc in ipairs(tool:GetDescendants()) do
-                            if desc:IsA("TextLabel") then desc.Text = customWeaponNameInput end
-                        end
-                    end
-                end
-            end
+            RenameGunBtn.Text = "✏️ Target Gun: " .. customWeaponNameInput
         end
         PromptGui:Destroy()
     end)
+end)
+
+-- Environment & Speed Extras
+SpeedBtn.MouseButton1Click:Connect(function()
+    SPEED_BOOST_ENABLED = not SPEED_BOOST_ENABLED
+    SpeedBtn.Text = SPEED_BOOST_ENABLED and "⚡ Speed Boost: ON" or "⚡ Speed Boost: OFF"
+    SpeedBtn.BackgroundColor3 = SPEED_BOOST_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    SpeedStroke.Color = SPEED_BOOST_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+    
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChildOfClass("Humanoid") then
+        character:FindFirstChildOfClass("Humanoid").WalkSpeed = SPEED_BOOST_ENABLED and 32 or 16
+    end
+end)
+
+local defaultFogEnd, defaultBrightness = Lighting.FogEnd, Lighting.Brightness
+local noFogActive = false
+
+FogBtn.MouseButton1Click:Connect(function()
+    noFogActive = not noFogActive
+    FogBtn.Text = noFogActive and "💡 No Fog / Fullbright: ON" or "💡 No Fog / Fullbright: OFF"
+    FogBtn.BackgroundColor3 = noFogActive and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    FogStroke.Color = noFogActive and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+    
+    Lighting.FogEnd = noFogActive and 9e9 or defaultFogEnd
+    Lighting.Brightness = noFogActive and 2 or defaultBrightness
 end)
