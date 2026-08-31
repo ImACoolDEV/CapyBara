@@ -1,4 +1,4 @@
--- Capybara Hub | Fancy Warm-Themed Utility GUI
+-- Capybara Hub | Fixed Anti-Sky Spawning Utility GUI
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -33,7 +33,30 @@ local WEAPON_PRIORITY = {
 }
 
 --------------------------------------------------------------------------------
--- 1. FANCY WARM CAPYBARA GUI SETUP
+-- HELPER: SAFE BEHIND TELEPORT
+--------------------------------------------------------------------------------
+local function safeTeleportBehind(targetRoot)
+    local character = LocalPlayer.Character
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not targetRoot then return end
+
+    -- Disable character collision briefly to avoid physics launching you upward
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    -- Calculate position 3.5 studs behind target, preserving ground Y level
+    local targetCF = targetRoot.CFrame
+    local behindPosition = targetCF.Position - (targetCF.LookVector * 3.5)
+    
+    hrp.CFrame = CFrame.new(behindPosition, targetCF.Position)
+end
+
+--------------------------------------------------------------------------------
+-- 1. GUI SETUP
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CapybaraHubCustom"
@@ -43,7 +66,7 @@ ScreenGui.Parent = PlayerGui
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 350, 0, 630)
 MainFrame.Position = UDim2.new(0.5, -175, 0.35, -315)
-MainFrame.BackgroundColor3 = Color3.fromRGB(60, 42, 33) -- Rich Dark Mocha
+MainFrame.BackgroundColor3 = Color3.fromRGB(60, 42, 33)
 MainFrame.BackgroundTransparency = 0.15
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -55,14 +78,13 @@ FrameCorner.Parent = MainFrame
 
 local FrameStroke = Instance.new("UIStroke")
 FrameStroke.Thickness = 2
-FrameStroke.Color = Color3.fromRGB(229, 186, 115) -- Warm Gold Outline
+FrameStroke.Color = Color3.fromRGB(229, 186, 115)
 FrameStroke.Transparency = 0.2
 FrameStroke.Parent = MainFrame
 
--- Header Bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 50)
-TitleBar.BackgroundColor3 = Color3.fromRGB(43, 29, 22) -- Deep Espresso Header
+TitleBar.BackgroundColor3 = Color3.fromRGB(43, 29, 22)
 TitleBar.BackgroundTransparency = 0.2
 TitleBar.Active = true
 TitleBar.Parent = MainFrame
@@ -82,7 +104,6 @@ TitleText.Font = Enum.Font.GothamBold
 TitleText.TextSize = 16
 TitleText.Parent = TitleBar
 
--- Animated ASCII Capybara Display
 local CapybaraLabel = Instance.new("TextLabel")
 CapybaraLabel.Size = UDim2.new(0, 110, 0, 35)
 CapybaraLabel.Position = UDim2.new(1, -115, 0, 7)
@@ -102,7 +123,6 @@ task.spawn(function()
     end
 end)
 
--- Smooth Dragging Logic
 local dragging, dragInput, dragStart, startPos
 
 TitleBar.InputBegan:Connect(function(input)
@@ -132,7 +152,6 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Layout Container
 local Container = Instance.new("Frame")
 Container.Size = UDim2.new(1, 0, 1, -55)
 Container.Position = UDim2.new(0, 0, 0, 55)
@@ -146,7 +165,7 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = Container
 
 --------------------------------------------------------------------------------
--- 2. STYLIZED CAPYBARA BUTTON BUILDER
+-- 2. BUTTON BUILDER
 --------------------------------------------------------------------------------
 local function CreateButton(text, order, initialActive)
     local btn = Instance.new("TextButton")
@@ -213,17 +232,13 @@ RockBtn.MouseButton1Click:Connect(function()
     
     if rockObj then
         if rockObj:IsA("BasePart") then
-            hrp.CFrame = rockObj.CFrame
+            hrp.CFrame = rockObj.CFrame + Vector3.new(0, 3, 0)
         elseif rockObj:IsA("Model") then
             local targetPart = rockObj.PrimaryPart or rockObj:FindFirstChildWhichIsA("BasePart")
             if targetPart then
-                hrp.CFrame = targetPart.CFrame
-            else
-                warn("Rock model found, but contains no valid parts to teleport to.")
+                hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
             end
         end
-    else
-        warn("Mesh/Part named 'rock' was not found in ReplicatedStorage or Workspace.")
     end
 end)
 
@@ -234,28 +249,12 @@ local function findSafezoneNPC()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
             local nameLower = string.lower(obj.Name)
-            
             if string.find(nameLower, "ready") or string.find(nameLower, "safe") or string.find(nameLower, "spawn") or string.find(nameLower, "npc") then
                 local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
                 if root then return root end
             end
-            
-            if obj:FindFirstChildOfClass("Tool") or obj:FindFirstChild("Pan") or obj:FindFirstChild("FryingPan") then
-                local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
-                if root then return root end
-            end
         end
     end
-    
-    for _, gui in ipairs(Workspace:GetDescendants()) do
-        if gui:IsA("TextLabel") and string.find(string.lower(gui.Text), "ready") then
-            local parentPart = gui:FindFirstAncestorOfClass("BasePart") or gui:FindFirstAncestorOfClass("Model")
-            if parentPart then
-                return parentPart:IsA("Model") and (parentPart.PrimaryPart or parentPart:FindFirstChild("HumanoidRootPart")) or parentPart
-            end
-        end
-    end
-
     return nil
 end
 
@@ -265,11 +264,7 @@ SafezoneBtn.MouseButton1Click:Connect(function()
     
     local targetNPC = findSafezoneNPC()
     if targetNPC then
-        if targetNPC:IsA("BasePart") then
-            character.HumanoidRootPart.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -3)
-        elseif targetNPC:IsA("Model") and targetNPC.PrimaryPart then
-            character.HumanoidRootPart.CFrame = targetNPC.PrimaryPart.CFrame * CFrame.new(0, 0, -3)
-        end
+        character.HumanoidRootPart.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -3)
     else
         for _, obj in ipairs(Workspace:GetDescendants()) do
             if obj:IsA("SpawnLocation") then
@@ -281,15 +276,14 @@ SafezoneBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------------------------------------
--- 6. TELEPORT TO NEAREST SPAWN LOGIC
+-- 6. TELEPORT TO NEAREST SPAWN
 --------------------------------------------------------------------------------
-local function teleportToNearestSpawn()
+SpawnBtn.MouseButton1Click:Connect(function()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
     
     local hrp = character.HumanoidRootPart
-    local nearestSpawn = nil
-    local shortestDistance = math.huge
+    local nearestSpawn, shortestDistance = nil, math.huge
     
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("SpawnLocation") then
@@ -304,9 +298,7 @@ local function teleportToNearestSpawn()
     if nearestSpawn then
         hrp.CFrame = nearestSpawn.CFrame + Vector3.new(0, 3.5, 0)
     end
-end
-
-SpawnBtn.MouseButton1Click:Connect(teleportToNearestSpawn)
+end)
 
 --------------------------------------------------------------------------------
 -- 7. TARGET DETECTOR & HIGHLIGHTING
@@ -316,9 +308,9 @@ local function findBossRoot()
         if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
             local nameLower = string.lower(obj.Name)
             if string.find(nameLower, TARGET_NAME) or string.find(nameLower, "ashbound") then
-                local targetPart = obj:FindFirstChild("Torso") 
+                local targetPart = obj:FindFirstChild("HumanoidRootPart") 
+                    or obj:FindFirstChild("Torso") 
                     or obj:FindFirstChild("UpperTorso") 
-                    or obj:FindFirstChild("HumanoidRootPart") 
                     or obj.PrimaryPart
                 
                 if targetPart then
@@ -330,38 +322,16 @@ local function findBossRoot()
     return nil, nil
 end
 
-local function applyBossHighlight(boss)
-    if not boss:FindFirstChild("CapybaraHighlight") then
+RunService.RenderStepped:Connect(function()
+    local boss, bossRoot = findBossRoot()
+    if boss and not boss:FindFirstChild("CapybaraHighlight") then
         local highlight = Instance.new("Highlight")
         highlight.Name = "CapybaraHighlight"
-        highlight.FillColor = Color3.fromRGB(240, 140, 40) -- Warm Orange
+        highlight.FillColor = Color3.fromRGB(240, 140, 40)
         highlight.OutlineColor = Color3.fromRGB(255, 230, 150)
         highlight.FillTransparency = 0.4
         highlight.OutlineTransparency = 0
         highlight.Parent = boss
-    end
-end
-
-local function checkAndHighlightItems()
-    for _, item in ipairs(Workspace:GetChildren()) do
-        if (item:IsA("Tool") or item:IsA("Model") or item:IsA("BasePart")) and not Players:GetPlayerFromCharacter(item) then
-            if not item:FindFirstChild("CapybaraItemHighlight") and (item:FindFirstChild("Handle") or item:IsA("BasePart")) then
-                local yellowHighlight = Instance.new("Highlight")
-                yellowHighlight.Name = "CapybaraItemHighlight"
-                yellowHighlight.FillColor = Color3.fromRGB(255, 200, 50)
-                yellowHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                yellowHighlight.FillTransparency = 0.3
-                yellowHighlight.OutlineTransparency = 0
-                yellowHighlight.Parent = item
-            end
-        end
-    end
-end
-
-RunService.RenderStepped:Connect(function()
-    local boss, bossRoot = findBossRoot()
-    if boss then
-        applyBossHighlight(boss)
     end
     
     if EXPAND_HITBOX_ENABLED and bossRoot then
@@ -376,10 +346,6 @@ RunService.RenderStepped:Connect(function()
         bossRoot.Transparency = 0.7
         bossRoot.BrickColor = BrickColor.new("Deep orange")
         bossRoot.CanCollide = false
-    end
-
-    if AUTO_PICKUP_ENABLED then
-        checkAndHighlightItems()
     end
 end)
 
@@ -417,7 +383,7 @@ BringBtn.MouseButton1Click:Connect(function()
             local character = LocalPlayer.Character
             
             if bossRoot and character and character:FindFirstChild("HumanoidRootPart") then
-                bossRoot.CFrame = character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+                bossRoot.CFrame = character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3.5)
             end
         end)
     else
@@ -431,29 +397,6 @@ end)
 --------------------------------------------------------------------------------
 -- 10. ITEM PICKUP & SPEED CONTROLS
 --------------------------------------------------------------------------------
-local function teleportToDroppedItems()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj:FindFirstChild("CapybaraItemHighlight") then
-            local targetCFrame = nil
-            if obj:IsA("BasePart") then
-                targetCFrame = obj.CFrame
-            elseif obj:FindFirstChild("Handle") then
-                targetCFrame = obj.Handle.CFrame
-            elseif obj.PrimaryPart then
-                targetCFrame = obj.PrimaryPart.CFrame
-            end
-
-            if targetCFrame then
-                character.HumanoidRootPart.CFrame = targetCFrame
-                task.wait(0.1)
-            end
-        end
-    end
-end
-
 AutoLootBtn.MouseButton1Click:Connect(function()
     AUTO_PICKUP_ENABLED = not AUTO_PICKUP_ENABLED
     AutoLootBtn.Text = AUTO_PICKUP_ENABLED and "🍊 Auto Pickup: ON" or "🍊 Auto Pickup: OFF"
@@ -472,7 +415,7 @@ SpeedBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------------------------------------
--- 11. WEAPON SELECTION & AUTO ATTACK
+-- 11. WEAPON SELECTION & AUTO ATTACK (SAFE BEHIND TARGET)
 --------------------------------------------------------------------------------
 local function getBestWeapon()
     local character = LocalPlayer.Character
@@ -510,10 +453,9 @@ local function equipAndAttack()
 end
 
 TPBtn.MouseButton1Click:Connect(function()
-    local boss, bossRoot = findBossRoot()
-    local character = LocalPlayer.Character
-    if bossRoot and character and character:FindFirstChild("HumanoidRootPart") then
-        character.HumanoidRootPart.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 3)
+    local _, bossRoot = findBossRoot()
+    if bossRoot then
+        safeTeleportBehind(bossRoot)
     end
 end)
 
@@ -524,16 +466,10 @@ AutoKillBtn.MouseButton1Click:Connect(function()
     
     if AUTO_KILL_ENABLED then
         connectionLoop = RunService.Heartbeat:Connect(function()
-            local boss, bossRoot = findBossRoot()
-            local character = LocalPlayer.Character
-            
-            if bossRoot and character and character:FindFirstChild("HumanoidRootPart") then
-                character.HumanoidRootPart.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 3)
+            local _, bossRoot = findBossRoot()
+            if bossRoot then
+                safeTeleportBehind(bossRoot)
                 equipAndAttack()
-            else
-                if AUTO_PICKUP_ENABLED then
-                    teleportToDroppedItems()
-                end
             end
         end)
     else
