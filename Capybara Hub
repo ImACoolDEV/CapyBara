@@ -1,3 +1,6 @@
+--------------------------------------------------------------------------------
+-- CAPYBARA HUB - FULL GUI & UTILITY CODE
+--------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -10,7 +13,7 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Configuration Variables
+-- Configuration Flags
 local TARGET_NAME = "rakoof"
 local AUTO_KILL_ENABLED = false
 local AUTO_PICKUP_ENABLED = true
@@ -20,6 +23,7 @@ local SPEED_BOOST_ENABLED = false
 local ANTI_SKY_SPAWN_ENABLED = false
 local AUTO_GUN_MOD_ENABLED = false
 local TOGGLE_KEY = Enum.KeyCode.RightControl 
+
 local connectionLoop, bringLoop, antiSkyLoop, gunModLoop = nil, nil, nil, nil
 
 -- Storage & Dynamic Inputs
@@ -27,13 +31,13 @@ local originalHitboxData = {}
 local modifiedWeapons = {}
 local customWeaponNameInput = "Capybara Blaster"
 
--- GitHub Dynamic Config
+-- GitHub Dynamic Priority Config
 local GITHUB_CONFIG_URL = "https://raw.githubusercontent.com/YourUsername/CapybaraHub/main/configs/weapons.json"
 local WEAPON_PRIORITY = {"TormentumAxe", "Murasama", "Ruinstrikers", "StunStick"}
 
 task.spawn(function()
-    local success, response = pcall(function() return game:HttpGet(GITHUB_CONFIG_URL) end)
-    if success and response then
+    local cfgSuccess, response = pcall(function() return game:HttpGet(GITHUB_CONFIG_URL) end)
+    if cfgSuccess and response then
         local decoded = HttpService:JSONDecode(response)
         if decoded and type(decoded.priority) == "table" then
             WEAPON_PRIORITY = decoded.priority
@@ -60,7 +64,7 @@ local function safeTeleportBehind(targetRoot)
 end
 
 --------------------------------------------------------------------------------
--- 1. FANCY GUI SETUP (GLASSMORPHISM & GLOW EFFECTS)
+-- GUI SETUP
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "CapybaraHubUltraFancy"
@@ -81,7 +85,6 @@ local FrameCorner = Instance.new("UICorner")
 FrameCorner.CornerRadius = UDim.new(0, 20)
 FrameCorner.Parent = MainFrame
 
--- Outer Neon Gradient Glow Frame
 local GlowFrame = Instance.new("Frame")
 GlowFrame.Size = UDim2.new(1, 12, 1, 12)
 GlowFrame.Position = UDim2.new(0, -6, 0, -6)
@@ -100,7 +103,6 @@ UIStroke.Transparency = 0.1
 UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 UIStroke.Parent = MainFrame
 
--- Animated Gradient for Border
 local UIGradient = Instance.new("UIGradient")
 UIGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 185, 90)),
@@ -115,7 +117,6 @@ task.spawn(function()
     end
 end)
 
--- Title Bar Header
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 56)
 TitleBar.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
@@ -194,7 +195,6 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Scrolling Container for Modern Feel
 local ScrollingFrame = Instance.new("ScrollingFrame")
 ScrollingFrame.Size = UDim2.new(1, -16, 1, -70)
 ScrollingFrame.Position = UDim2.new(0, 8, 0, 62)
@@ -212,7 +212,7 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = ScrollingFrame
 
 --------------------------------------------------------------------------------
--- 2. FANCY BUTTON BUILDER (GLOW, TWEEN & GRADIENT ANIMATIONS)
+-- BUTTON BUILDER
 --------------------------------------------------------------------------------
 local function CreateButton(text, order, initialActive)
     local btn = Instance.new("TextButton")
@@ -237,14 +237,6 @@ local function CreateButton(text, order, initialActive)
     stroke.Transparency = 0.3
     stroke.Parent = btn
 
-    local btnGradient = Instance.new("UIGradient")
-    btnGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 190, 190))
-    })
-    btnGradient.Parent = btn
-
-    -- Fancy Hover & Press Animations
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             BackgroundTransparency = 0.0,
@@ -279,7 +271,7 @@ local GunModBtn, GunModStroke = CreateButton("🔫 GitHub Gun Modifier: OFF", 12
 local RenameGunBtn, RenameGunStroke = CreateButton("✏️ Rename Active Weapon: [Custom Name]", 13, false)
 
 --------------------------------------------------------------------------------
--- 3. KEYBIND TOGGLE WITH SMOOTH FADE ANIMATION
+-- KEYBIND TOGGLE
 --------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -289,12 +281,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 --------------------------------------------------------------------------------
--- 4. TELEPORT TO ROCK MESH
+-- FEATURES & HANDLERS
 --------------------------------------------------------------------------------
 RockBtn.MouseButton1Click:Connect(function()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
     local hrp = character.HumanoidRootPart
     local rockObj = ReplicatedStorage:FindFirstChild("rock", true) or Workspace:FindFirstChild("rock", true)
     
@@ -308,9 +299,6 @@ RockBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 5. TELEPORT TO SAFEZONE
---------------------------------------------------------------------------------
 local function findSafezoneNPC()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
@@ -341,13 +329,9 @@ SafezoneBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 6. TELEPORT TO NEAREST SPAWN
---------------------------------------------------------------------------------
 SpawnBtn.MouseButton1Click:Connect(function()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
     local hrp = character.HumanoidRootPart
     local nearestSpawn, shortestDistance = nil, math.huge
     
@@ -363,9 +347,6 @@ SpawnBtn.MouseButton1Click:Connect(function()
     if nearestSpawn then hrp.CFrame = nearestSpawn.CFrame + Vector3.new(0, 3.5, 0) end
 end)
 
---------------------------------------------------------------------------------
--- 7. TARGET DETECTOR & HIGHLIGHTING
---------------------------------------------------------------------------------
 local function findBossRoot()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
@@ -409,9 +390,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 8. HITBOX EXPANDER TOGGLE
---------------------------------------------------------------------------------
 HitboxBtn.MouseButton1Click:Connect(function()
     EXPAND_HITBOX_ENABLED = not EXPAND_HITBOX_ENABLED
     HitboxBtn.Text = EXPAND_HITBOX_ENABLED and "📦 Expand RakOOF Hitbox: ON" or "📦 Expand RakOOF Hitbox: OFF"
@@ -430,9 +408,6 @@ HitboxBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 9. BRING RAKOOF LOGIC
---------------------------------------------------------------------------------
 BringBtn.MouseButton1Click:Connect(function()
     BRING_BOSS_ENABLED = not BRING_BOSS_ENABLED
     BringBtn.Text = BRING_BOSS_ENABLED and "🧲 Bring RakOOF: ON" or "🧲 Bring RakOOF: OFF"
@@ -452,9 +427,6 @@ BringBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 10. ITEM PICKUP & SPEED CONTROLS
---------------------------------------------------------------------------------
 AutoLootBtn.MouseButton1Click:Connect(function()
     AUTO_PICKUP_ENABLED = not AUTO_PICKUP_ENABLED
     AutoLootBtn.Text = AUTO_PICKUP_ENABLED and "🍊 Auto Pickup: ON" or "🍊 Auto Pickup: OFF"
@@ -474,9 +446,6 @@ SpeedBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 11. WEAPON SELECTION & AUTO ATTACK
---------------------------------------------------------------------------------
 local function getBestWeapon()
     local character = LocalPlayer.Character
     local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -493,14 +462,12 @@ local function getBestWeapon()
     for _, tool in ipairs(backpack:GetChildren()) do
         if tool:IsA("Tool") then return tool end
     end
-
     return nil
 end
 
 local function equipAndAttack()
     local character = LocalPlayer.Character
     if not character then return end
-    
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     local bestTool = getBestWeapon()
     
@@ -534,9 +501,6 @@ AutoKillBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 12. NO FOG / FULLBRIGHT TOGGLE
---------------------------------------------------------------------------------
 local defaultFogEnd = Lighting.FogEnd
 local defaultBrightness = Lighting.Brightness
 local defaultGlobalShadows = Lighting.GlobalShadows
@@ -559,9 +523,6 @@ FogBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 13. ANTI-SKY SPAWNING UTILITY
---------------------------------------------------------------------------------
 AntiSkyBtn.MouseButton1Click:Connect(function()
     ANTI_SKY_SPAWN_ENABLED = not ANTI_SKY_SPAWN_ENABLED
     AntiSkyBtn.Text = ANTI_SKY_SPAWN_ENABLED and "🪂 Anti-Sky Spawning: ON" or "🪂 Anti-Sky Spawning: OFF"
@@ -601,9 +562,6 @@ AntiSkyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 14. GITHUB-SUPPORTED GUN MODIFIER UTILITY
---------------------------------------------------------------------------------
 GunModBtn.MouseButton1Click:Connect(function()
     AUTO_GUN_MOD_ENABLED = not AUTO_GUN_MOD_ENABLED
     GunModBtn.Text = AUTO_GUN_MOD_ENABLED and "🔫 GitHub Gun Modifier: ON" or "🔫 GitHub Gun Modifier: OFF"
@@ -649,9 +607,6 @@ GunModBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- 15. ULTRA-FANCY MODAL DIALOG FOR WEAPON RENAMING
---------------------------------------------------------------------------------
 RenameGunBtn.MouseButton1Click:Connect(function()
     local PromptGui = Instance.new("ScreenGui")
     PromptGui.Name = "CapybaraRenamePromptFancy"
@@ -703,11 +658,6 @@ RenameGunBtn.MouseButton1Click:Connect(function()
     TCorner.CornerRadius = UDim.new(0, 10)
     TCorner.Parent = TextBox
 
-    local TStroke = Instance.new("UIStroke")
-    TStroke.Thickness = 1
-    TStroke.Color = Color3.fromRGB(150, 100, 70)
-    TStroke.Parent = TextBox
-
     local SubmitBtn = Instance.new("TextButton")
     SubmitBtn.Size = UDim2.new(0.88, 0, 0, 36)
     SubmitBtn.Position = UDim2.new(0.06, 0, 0, 100)
@@ -741,6 +691,4 @@ RenameGunBtn.MouseButton1Click:Connect(function()
         end
         PromptGui:Destroy()
     end)
-end)
-    end
 end)
