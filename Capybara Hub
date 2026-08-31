@@ -15,7 +15,7 @@ else
 end
 
 --------------------------------------------------------------------------------
--- CAPYBARA HUB - INTEGRATED GUN MODIFIER & UI
+-- CAPYBARA HUB - TOOL GIVER INTEGRATION
 --------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -24,90 +24,70 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Configuration
-local GITHUB_CONFIG_URL = "https://raw.githubusercontent.com/ImACoolDEV/CapyBara/main/gun_config.json"
-local DEFAULT_GUN_NAME = "TaurusJudge"
-local TARGET_NAME = "rakoof"
 local TOGGLE_KEY = Enum.KeyCode.RightControl
+local targetToolName = "TaurusJudge"
 
-local AUTO_KILL_ENABLED = false
-local AUTO_PICKUP_ENABLED = true
-local BRING_BOSS_ENABLED = false
-local EXPAND_HITBOX_ENABLED = false
 local SPEED_BOOST_ENABLED = false
-local ANTI_SKY_SPAWN_ENABLED = false
-local AUTO_GUN_MOD_ENABLED = false
+local noFogActive = false
 
-local connectionLoop, bringLoop, antiSkyLoop, gunModLoop = nil, nil, nil, nil
-local originalHitboxData = {}
-local modifiedWeapons = {}
-local customWeaponNameInput = DEFAULT_GUN_NAME
-
--- GitHub Target Fetcher
-local function getTargetGunName()
-    local cfgSuccess, response = pcall(function()
-        return game:HttpGet(GITHUB_CONFIG_URL)
-    end)
-    
-    if cfgSuccess and response then
-        local decodeSuccess, decoded = pcall(function()
-            return HttpService:JSONDecode(response)
-        end)
-        if decodeSuccess and decoded and decoded.GunName then
-            return decoded.GunName
-        end
+-- Function to search game storage and give the requested tool
+local function giveTool(toolName)
+    if not toolName or toolName == "" then
+        warn("No tool name provided.")
+        return false
     end
-    return customWeaponNameInput
-end
 
--- Core ModuleScript Modifier
-local function modifyGunModule(tool)
-    local settingScript = tool:FindFirstChild("Setting")
-    if settingScript and settingScript:IsA("ModuleScript") then
-        local success, config = pcall(require, settingScript)
-        if success and type(config) == "table" then
-            -- 1. Infinite Ammo
-            config.LimitedClipEnabled = false 
-            config.AmmoPerClip = math.huge
-            config.MaxClip = math.huge
-            
-            -- 2. No Spread
-            config.Spread = 0
-            config.SpreadRedution = 0
-            
-            -- 3. No Recoil
-            config.CameraShakingEnabled = false
-            
-            -- 4. Fast Fire Rate & Auto
-            config.FireRate = 0
-            config.Auto = true
-            config.BurstFireEnabled = false
-            config.DelayBeforeFiring = 0
-            config.DelayAfterFiring = 0
-            
-            print("Successfully injected ModuleScript settings into:", tool.Name)
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+
+    -- Search places where tools are normally stored
+    local searchLocations = {
+        ReplicatedStorage,
+        Workspace,
+        game:GetService("Lighting")
+    }
+
+    local foundTool = nil
+
+    for _, location in ipairs(searchLocations) do
+        for _, obj in ipairs(location:GetDescendants()) do
+            if obj:IsA("Tool") and obj.Name:lower() == toolName:lower() then
+                foundTool = obj
+                break
+            end
+        end
+        if foundTool then break end
+    end
+
+    if foundTool then
+        local toolClone = foundTool:Clone()
+        if backpack then
+            toolClone.Parent = backpack
+            print("Successfully gave tool: " .. toolClone.Name .. " to Backpack!")
             return true
         end
+    else
+        warn("Tool '" .. toolName .. "' was not found in ReplicatedStorage, Workspace, or Lighting.")
+        return false
     end
-    return false
 end
 
 --------------------------------------------------------------------------------
 -- GUI CREATION
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CapybaraHubCombined"
+ScreenGui.Name = "CapybaraHubToolGiver"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 780)
-MainFrame.Position = UDim2.new(0.5, -180, 0.3, -315)
+MainFrame.Size = UDim2.new(0, 360, 0, 600)
+MainFrame.Position = UDim2.new(0.5, -180, 0.3, -250)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
@@ -176,7 +156,7 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(1, 0, 0, 15)
 SubTitle.Position = UDim2.new(0, 16, 0, 32)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Gun Mod & Utilities • [RightCtrl]"
+SubTitle.Text = "Tool Giver Edition • [RightCtrl]"
 SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
 SubTitle.Font = Enum.Font.GothamMedium
@@ -216,7 +196,7 @@ ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(235, 140, 50)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 710)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 520)
 ScrollingFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
@@ -261,21 +241,41 @@ local function CreateButton(text, order, initialActive)
     return btn, stroke
 end
 
-local ApplyModBtn, ApplyModStroke = CreateButton("⚡ Apply Settings Module Mod", 1, false)
-local GunModBtn, GunModStroke = CreateButton("🔫 Auto Gun Loop: OFF", 2, false)
-local RenameGunBtn, RenameGunStroke = CreateButton("✏️ Target Gun: " .. DEFAULT_GUN_NAME, 3, false)
-local SafezoneBtn, SafezoneStroke = CreateButton("🛡️ Safezone (Ready Guy)", 4, false)
-local SpawnBtn, SpawnStroke = CreateButton("📍 Teleport to Nearest Spawn", 5, false)
-local RockBtn, RockStroke = CreateButton("🗿 Teleport to Rock Mesh", 6, false)
-local BringBtn, BringStroke = CreateButton("🧲 Bring Target: OFF", 7, false)
-local HitboxBtn, HitboxStroke = CreateButton("📦 Expand Target Hitbox: OFF", 8, false)
-local AutoKillBtn, AutoKillStroke = CreateButton("⚔️ Auto Attack: OFF", 9, false)
-local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 10, false)
-local FogBtn, FogStroke = CreateButton("💡 No Fog / Fullbright: OFF", 11, false)
-local AntiSkyBtn, AntiSkyStroke = CreateButton("🪂 Anti-Sky Spawning: OFF", 12, false)
+-- TOOL GIVER UI ELEMENTS
+local ToolInputFrame = Instance.new("Frame")
+ToolInputFrame.Size = UDim2.new(0.96, 0, 0, 50)
+ToolInputFrame.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
+ToolInputFrame.BackgroundTransparency = 0.2
+ToolInputFrame.LayoutOrder = 1
+ToolInputFrame.Parent = ScrollingFrame
+
+local ToolInputCorner = Instance.new("UICorner")
+ToolInputCorner.CornerRadius = UDim.new(0, 12)
+ToolInputCorner.Parent = ToolInputFrame
+
+local ToolTextBox = Instance.new("TextBox")
+ToolTextBox.Size = UDim2.new(0.9, 0, 0.7, 0)
+ToolTextBox.Position = UDim2.new(0.05, 0, 0.15, 0)
+ToolTextBox.BackgroundTransparency = 1
+ToolTextBox.Text = targetToolName
+ToolTextBox.PlaceholderText = "Enter Tool Name Here..."
+ToolTextBox.TextColor3 = Color3.fromRGB(255, 230, 200)
+ToolTextBox.Font = Enum.Font.GothamMedium
+ToolTextBox.TextSize = 13
+ToolTextBox.Parent = ToolInputFrame
+
+ToolTextBox.FocusLost:Connect(function()
+    if ToolTextBox.Text ~= "" then
+        targetToolName = ToolTextBox.Text
+    end
+end)
+
+local GiveToolBtn, GiveToolStroke = CreateButton("🎁 Give Tool", 2, false)
+local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 3, false)
+local FogBtn, FogStroke = CreateButton("💡 No Fog / Fullbright: OFF", 4, false)
 
 --------------------------------------------------------------------------------
--- HANDLERS & LOGIC
+-- HANDLERS
 --------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == TOGGLE_KEY then
@@ -283,133 +283,21 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- One-time Apply Settings Mod
-ApplyModBtn.MouseButton1Click:Connect(function()
-    local targetName = getTargetGunName()
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    local character = LocalPlayer.Character
+GiveToolBtn.MouseButton1Click:Connect(function()
+    local nameToGive = ToolTextBox.Text ~= "" and ToolTextBox.Text or targetToolName
+    local successGive = giveTool(nameToGive)
     
-    local tool = (backpack and backpack:FindFirstChild(targetName)) 
-        or (character and character:FindFirstChild(targetName))
-
-    if tool then
-        local modified = modifyGunModule(tool)
-        if modified then
-            ApplyModBtn.Text = "✅ Modified " .. targetName .. "!"
-            task.delay(2, function() ApplyModBtn.Text = "⚡ Apply Settings Module Mod" end)
-        else
-            warn("Could not find 'Setting' ModuleScript in " .. targetName)
-        end
+    if successGive then
+        GiveToolBtn.Text = "✅ Given: " .. nameToGive
     else
-        warn("Gun '" .. targetName .. "' not found in Backpack or Character.")
+        GiveToolBtn.Text = "❌ Tool Not Found!"
     end
-end)
-
--- Auto Loop Modifier (Checks setting script continually)
-GunModBtn.MouseButton1Click:Connect(function()
-    AUTO_GUN_MOD_ENABLED = not AUTO_GUN_MOD_ENABLED
-    GunModBtn.Text = AUTO_GUN_MOD_ENABLED and "🔫 Auto Gun Loop: ON" or "🔫 Auto Gun Loop: OFF"
-    GunModBtn.BackgroundColor3 = AUTO_GUN_MOD_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    GunModStroke.Color = AUTO_GUN_MOD_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-
-    if AUTO_GUN_MOD_ENABLED then
-        gunModLoop = RunService.Heartbeat:Connect(function()
-            local targetName = getTargetGunName()
-            local backpack = LocalPlayer:FindFirstChild("Backpack")
-            local character = LocalPlayer.Character
-            
-            local containers = {backpack, character}
-            for _, container in ipairs(containers) do
-                if container then
-                    local tool = container:FindFirstChild(targetName)
-                    if tool and tool:IsA("Tool") and not modifiedWeapons[tool] then
-                        local success = modifyGunModule(tool)
-                        if success then modifiedWeapons[tool] = true end
-                    end
-                end
-            end
-        end)
-    else
-        if gunModLoop then gunModLoop:Disconnect() gunModLoop = nil end
-        table.clear(modifiedWeapons)
-    end
-end)
-
--- Dynamic Gun Target Switcher
-RenameGunBtn.MouseButton1Click:Connect(function()
-    local PromptGui = Instance.new("ScreenGui")
-    PromptGui.Parent = PlayerGui
-
-    local Overlay = Instance.new("Frame")
-    Overlay.Size = UDim2.new(1, 0, 1, 0)
-    Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Overlay.BackgroundTransparency = 0.5
-    Overlay.Parent = PromptGui
-
-    local PromptFrame = Instance.new("Frame")
-    PromptFrame.Size = UDim2.new(0, 300, 0, 160)
-    PromptFrame.Position = UDim2.new(0.5, -150, 0.5, -80)
-    PromptFrame.BackgroundColor3 = Color3.fromRGB(30, 20, 15)
-    PromptFrame.BorderSizePixel = 0
-    PromptFrame.Parent = PromptGui
-
-    local PCorner = Instance.new("UICorner")
-    PCorner.CornerRadius = UDim.new(0, 16)
-    PCorner.Parent = PromptFrame
-
-    local PStroke = Instance.new("UIStroke")
-    PStroke.Thickness = 2
-    PStroke.Color = Color3.fromRGB(255, 185, 90)
-    PStroke.Parent = PromptFrame
-
-    local PLabel = Instance.new("TextLabel")
-    PLabel.Size = UDim2.new(1, 0, 0, 40)
-    PLabel.BackgroundTransparency = 1
-    PLabel.Text = "✏️ Enter Gun Name"
-    PLabel.TextColor3 = Color3.fromRGB(255, 230, 200)
-    PLabel.Font = Enum.Font.GothamBold
-    PLabel.TextSize = 15
-    PLabel.Parent = PromptFrame
-
-    local TextBox = Instance.new("TextBox")
-    TextBox.Size = UDim2.new(0.88, 0, 0, 38)
-    TextBox.Position = UDim2.new(0.06, 0, 0, 48)
-    TextBox.BackgroundColor3 = Color3.fromRGB(55, 38, 28)
-    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextBox.PlaceholderText = "e.g. TaurusJudge"
-    TextBox.Text = customWeaponNameInput
-    TextBox.Font = Enum.Font.Gotham
-    TextBox.TextSize = 13
-    TextBox.Parent = PromptFrame
-
-    local TCorner = Instance.new("UICorner")
-    TCorner.CornerRadius = UDim.new(0, 10)
-    TCorner.Parent = TextBox
-
-    local SubmitBtn = Instance.new("TextButton")
-    SubmitBtn.Size = UDim2.new(0.88, 0, 0, 36)
-    SubmitBtn.Position = UDim2.new(0.06, 0, 0, 100)
-    SubmitBtn.BackgroundColor3 = Color3.fromRGB(235, 140, 50)
-    SubmitBtn.Text = "Update Target"
-    SubmitBtn.TextColor3 = Color3.fromRGB(30, 20, 15)
-    SubmitBtn.Font = Enum.Font.GothamBold
-    SubmitBtn.TextSize = 13
-    SubmitBtn.Parent = PromptFrame
-
-    local SCorner = Instance.new("UICorner")
-    SCorner.CornerRadius = UDim.new(0, 10)
-    SCorner.Parent = SubmitBtn
-
-    SubmitBtn.MouseButton1Click:Connect(function()
-        if TextBox.Text ~= "" then
-            customWeaponNameInput = TextBox.Text
-            RenameGunBtn.Text = "✏️ Target Gun: " .. customWeaponNameInput
-        end
-        PromptGui:Destroy()
+    
+    task.delay(2, function()
+        GiveToolBtn.Text = "🎁 Give Tool"
     end)
 end)
 
--- Environment & Speed Extras
 SpeedBtn.MouseButton1Click:Connect(function()
     SPEED_BOOST_ENABLED = not SPEED_BOOST_ENABLED
     SpeedBtn.Text = SPEED_BOOST_ENABLED and "⚡ Speed Boost: ON" or "⚡ Speed Boost: OFF"
@@ -423,7 +311,6 @@ SpeedBtn.MouseButton1Click:Connect(function()
 end)
 
 local defaultFogEnd, defaultBrightness = Lighting.FogEnd, Lighting.Brightness
-local noFogActive = false
 
 FogBtn.MouseButton1Click:Connect(function()
     noFogActive = not noFogActive
