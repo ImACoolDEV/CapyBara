@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- CAPYBARA HUB - TOOL GIVER & STATS SYSTEM
+-- CAPYBARA HUB - ULTIMATE AUTOMATION & STAMINA EDITION 🍊
 --------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -12,7 +12,90 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Configuration Variables
+--------------------------------------------------------------------------------
+-- ANIMATED LOADING SCREEN
+--------------------------------------------------------------------------------
+local LoadScreenGui = Instance.new("ScreenGui")
+LoadScreenGui.Name = "CapybaraHubLoading"
+LoadScreenGui.ResetOnSpawn = false
+LoadScreenGui.Parent = PlayerGui
+
+local LoadFrame = Instance.new("Frame")
+LoadFrame.Size = UDim2.new(0, 0, 0, 0)
+LoadFrame.Position = UDim2.new(0.5, -220, 0.5, -110)
+LoadFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
+LoadFrame.BackgroundTransparency = 0.1
+LoadFrame.BorderSizePixel = 0
+LoadFrame.Parent = LoadScreenGui
+
+local LoadCorner = Instance.new("UICorner")
+LoadCorner.CornerRadius = UDim.new(0, 16)
+LoadCorner.Parent = LoadFrame
+
+local LoadStroke = Instance.new("UIStroke")
+LoadStroke.Thickness = 2.5
+LoadStroke.Color = Color3.fromRGB(255, 170, 0)
+LoadStroke.Parent = LoadFrame
+
+TweenService:Create(LoadFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 440, 0, 220),
+    BackgroundTransparency = 0.05
+}):Play()
+
+local LoadTitle = Instance.new("TextLabel")
+LoadTitle.Size = UDim2.new(1, 0, 0, 50)
+LoadTitle.Position = UDim2.new(0, 0, 0, 15)
+LoadTitle.BackgroundTransparency = 1
+LoadTitle.Text = "🍊 CAPYBARA HUB — LOADING 🍊"
+LoadTitle.TextColor3 = Color3.fromRGB(255, 225, 190)
+LoadTitle.Font = Enum.Font.GothamBold
+LoadTitle.TextSize = 15
+LoadTitle.Parent = LoadFrame
+
+local BarBg = Instance.new("Frame")
+BarBg.Size = UDim2.new(0.88, 0, 0, 14)
+BarBg.Position = UDim2.new(0.06, 0, 0.42, 0)
+BarBg.BackgroundColor3 = Color3.fromRGB(45, 30, 22)
+BarBg.Parent = LoadFrame
+Instance.new("UICorner", BarBg).CornerRadius = UDim.new(0, 6)
+
+local BarFill = Instance.new("Frame")
+BarFill.Size = UDim2.new(0, 0, 1, 0)
+BarFill.BackgroundColor3 = Color3.fromRGB(255, 150, 40)
+BarFill.Parent = BarBg
+Instance.new("UICorner", BarFill).CornerRadius = UDim.new(0, 6)
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, 0, 0, 30)
+StatusLabel.Position = UDim2.new(0, 0, 0.62, 0)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Initializing Modules..."
+StatusLabel.TextColor3 = Color3.fromRGB(200, 150, 120)
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 12
+StatusLabel.Parent = LoadFrame
+
+-- Loading animation steps
+local steps = {
+    {text = "Bypassing Client Hooks...", progress = 0.35},
+    {text = "Loading Automation & ESP Systems...", progress = 0.75},
+    {text = "Welcome, " .. LocalPlayer.Name .. "!", progress = 1.0}
+}
+
+for _, step in ipairs(steps) do
+    StatusLabel.Text = step.text
+    TweenService:Create(BarFill, TweenInfo.new(0.35), {Size = UDim2.new(step.progress, 0, 1, 0)}):Play()
+    task.wait(0.4)
+end
+
+task.wait(0.3)
+TweenService:Create(LoadFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}):Play()
+task.wait(0.3)
+LoadScreenGui:Destroy()
+
+--------------------------------------------------------------------------------
+-- CONFIGURATION & STATE VARIABLES
+--------------------------------------------------------------------------------
 local TOGGLE_KEY = Enum.KeyCode.RightControl
 local targetToolName = "TaurusJudge"
 local customPointsAmount = 100
@@ -20,9 +103,12 @@ local customKillsAmount = 10
 
 local SPEED_BOOST_ENABLED = false
 local AUTO_POINTS_ENABLED = false
+local AUTO_PICKUP_ENABLED = false
+local AUTO_CANDY_ENABLED = false
+local INF_STAMINA_ENABLED = false
 
 --------------------------------------------------------------------------------
--- TOOL & LEADERSTATS LOGIC
+-- CORE AUTOMATION & LOGIC
 --------------------------------------------------------------------------------
 local function giveToolToInventory(toolName)
     if not toolName or toolName == "" then return false end
@@ -30,13 +116,7 @@ local function giveToolToInventory(toolName)
     local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
     local starterGear = LocalPlayer:FindFirstChild("StarterGear")
 
-    local searchLocations = {
-        ReplicatedStorage,
-        Workspace,
-        Lighting,
-        game:GetService("ServerStorage")
-    }
-
+    local searchLocations = { ReplicatedStorage, Workspace, Lighting, game:GetService("ServerStorage") }
     local foundTool = nil
 
     for _, location in ipairs(searchLocations) do
@@ -50,17 +130,10 @@ local function giveToolToInventory(toolName)
     end
 
     if foundTool then
-        if backpack then
-            local clonedTool = foundTool:Clone()
-            clonedTool.Parent = backpack
-        end
-        if starterGear then
-            local clonedTool2 = foundTool:Clone()
-            clonedTool2.Parent = starterGear
-        end
+        if backpack then foundTool:Clone().Parent = backpack end
+        if starterGear then foundTool:Clone().Parent = starterGear end
         return true
     end
-
     return false
 end
 
@@ -76,26 +149,32 @@ local function modifyStat(statName, amount)
     return false
 end
 
+local function safeTouchInterest(part1, part2)
+    if typeof(firetouchinterest) == "function" then
+        pcall(function() firetouchinterest(part1, part2, 0) firetouchinterest(part1, part2, 1) end)
+    else
+        pcall(function() if not part2.Anchored then part2.CFrame = part1.CFrame end end)
+    end
+end
+
 --------------------------------------------------------------------------------
--- GUI CREATION
+-- MAIN HUB GUI CREATION
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CapybaraHubToolsStats"
+ScreenGui.Name = "CapybaraHubAdvanced"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 680)
-MainFrame.Position = UDim2.new(0.5, -180, 0.3, -250)
+MainFrame.Size = UDim2.new(0, 380, 0, 740)
+MainFrame.Position = UDim2.new(0.5, -190, 0.3, -260)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
-local FrameCorner = Instance.new("UICorner")
-FrameCorner.CornerRadius = UDim.new(0, 20)
-FrameCorner.Parent = MainFrame
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 20)
 
 local GlowFrame = Instance.new("Frame")
 GlowFrame.Size = UDim2.new(1, 12, 1, 12)
@@ -104,10 +183,7 @@ GlowFrame.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
 GlowFrame.BackgroundTransparency = 0.8
 GlowFrame.ZIndex = 0
 GlowFrame.Parent = MainFrame
-
-local GlowCorner = Instance.new("UICorner")
-GlowCorner.CornerRadius = UDim.new(0, 24)
-GlowCorner.Parent = GlowFrame
+Instance.new("UICorner", GlowFrame).CornerRadius = UDim.new(0, 24)
 
 local UIStroke = Instance.new("UIStroke")
 UIStroke.Thickness = 2.5
@@ -135,16 +211,13 @@ TitleBar.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
 TitleBar.BackgroundTransparency = 0.2
 TitleBar.Active = true
 TitleBar.Parent = MainFrame
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 20)
-TitleCorner.Parent = TitleBar
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 20)
 
 local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -120, 1, 0)
 TitleText.Position = UDim2.new(0, 16, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "🍊 CAPYBARA HUB"
+TitleText.Text = "🍊 CAPYBARA HUB V2"
 TitleText.TextColor3 = Color3.fromRGB(255, 225, 190)
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Font = Enum.Font.GothamBold
@@ -155,7 +228,7 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(1, 0, 0, 15)
 SubTitle.Position = UDim2.new(0, 16, 0, 32)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Tools, Points & Kills • [RightCtrl]"
+SubTitle.Text = "Automation, Stamina & Stats • [RightCtrl]"
 SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
 SubTitle.Font = Enum.Font.GothamMedium
@@ -195,7 +268,7 @@ ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(235, 140, 50)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 740)
 ScrollingFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
@@ -266,7 +339,7 @@ local function CreateInputBox(placeholderText, defaultText, order)
     return textBox
 end
 
--- UI INPUT FIELDS
+-- UI ELEMENTS
 local ToolTextBox = CreateInputBox("Enter Tool Name...", targetToolName, 1)
 local GiveToolBtn, GiveToolStroke = CreateButton("🎁 Copy Tool to Inventory", 2, false)
 
@@ -277,10 +350,13 @@ local KillsTextBox = CreateInputBox("Enter Kills Amount...", customKillsAmount, 
 local AddKillsBtn, AddKillsStroke = CreateButton("⚔️ Add Kills", 6, false)
 
 local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 7, false)
-local SpeedBtn, SpeedStroke = CreateButton("⚡ Speed Boost: OFF", 8, false)
+local AutoPickupBtn, AutoPickupStroke = CreateButton("🎁 Auto Pickup Items: OFF", 8, false)
+local AutoCandyBtn, AutoCandyStroke = CreateButton("🍬 Auto Farm Candies/Souls: OFF", 9, false)
+local InfStaminaBtn, InfStaminaStroke = CreateButton("⚡ Infinite Stamina: OFF", 10, false)
+local SpeedBtn, SpeedStroke = CreateButton("🚀 Speed Boost: OFF", 11, false)
 
 --------------------------------------------------------------------------------
--- EVENT HANDLERS
+-- EVENT HANDLERS & LOOPS
 --------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == TOGGLE_KEY then
@@ -288,55 +364,27 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Give Tool Handler
 GiveToolBtn.MouseButton1Click:Connect(function()
     local toolName = ToolTextBox.Text ~= "" and ToolTextBox.Text or targetToolName
     local success = giveToolToInventory(toolName)
-    
-    if success then
-        GiveToolBtn.Text = "✅ Copied " .. toolName .. " to Inventory!"
-    else
-        GiveToolBtn.Text = "❌ Tool Not Found!"
-    end
-    
-    task.delay(2, function()
-        GiveToolBtn.Text = "🎁 Copy Tool to Inventory"
-    end)
+    GiveToolBtn.Text = success and ("✅ Copied " .. toolName .. "!") or "❌ Tool Not Found!"
+    task.delay(2, function() GiveToolBtn.Text = "🎁 Copy Tool to Inventory" end)
 end)
 
--- Add Points Handler
 AddPointsBtn.MouseButton1Click:Connect(function()
-    local pointsAmount = tonumber(PointsTextBox.Text) or customPointsAmount
-    local success = modifyStat("Points", pointsAmount)
-    
-    if success then
-        AddPointsBtn.Text = "✅ Added +" .. pointsAmount .. " Points!"
-    else
-        AddPointsBtn.Text = "❌ Leaderstats 'Points' Not Found!"
-    end
-    
-    task.delay(2, function()
-        AddPointsBtn.Text = "🪙 Add Points"
-    end)
+    local pts = tonumber(PointsTextBox.Text) or customPointsAmount
+    local success = modifyStat("Points", pts)
+    AddPointsBtn.Text = success and ("✅ Added +" .. pts .. " Points!") or "❌ Leaderstats 'Points' Missing!"
+    task.delay(2, function() AddPointsBtn.Text = "🪙 Add Points" end)
 end)
 
--- Add Kills Handler
 AddKillsBtn.MouseButton1Click:Connect(function()
-    local killsAmount = tonumber(KillsTextBox.Text) or customKillsAmount
-    local success = modifyStat("Kills", killsAmount)
-    
-    if success then
-        AddKillsBtn.Text = "✅ Added +" .. killsAmount .. " Kills!"
-    else
-        AddKillsBtn.Text = "❌ Leaderstats 'Kills' Not Found!"
-    end
-    
-    task.delay(2, function()
-        AddKillsBtn.Text = "⚔️ Add Kills"
-    end)
+    local kills = tonumber(KillsTextBox.Text) or customKillsAmount
+    local success = modifyStat("Kills", kills)
+    AddKillsBtn.Text = success and ("✅ Added +" .. kills .. " Kills!") or "❌ Leaderstats 'Kills' Missing!"
+    task.delay(2, function() AddKillsBtn.Text = "⚔️ Add Kills" end)
 end)
 
--- Auto Farm Points Loop
 AutoPointsBtn.MouseButton1Click:Connect(function()
     AUTO_POINTS_ENABLED = not AUTO_POINTS_ENABLED
     AutoPointsBtn.Text = AUTO_POINTS_ENABLED and "🔄 Auto Farm Points: ON" or "🔄 Auto Farm Points: OFF"
@@ -346,18 +394,96 @@ AutoPointsBtn.MouseButton1Click:Connect(function()
     if AUTO_POINTS_ENABLED then
         task.spawn(function()
             while AUTO_POINTS_ENABLED do
-                local pointsAmount = tonumber(PointsTextBox.Text) or 10
-                modifyStat("Points", pointsAmount)
+                modifyStat("Points", tonumber(PointsTextBox.Text) or 10)
                 task.wait(0.5)
             end
         end)
     end
 end)
 
--- Speed Boost
+AutoPickupBtn.MouseButton1Click:Connect(function()
+    AUTO_PICKUP_ENABLED = not AUTO_PICKUP_ENABLED
+    AutoPickupBtn.Text = AUTO_PICKUP_ENABLED and "🎁 Auto Pickup Items: ON" or "🎁 Auto Pickup Items: OFF"
+    AutoPickupBtn.BackgroundColor3 = AUTO_PICKUP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    AutoPickupStroke.Color = AUTO_PICKUP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if AUTO_PICKUP_ENABLED then
+        task.spawn(function()
+            while AUTO_PICKUP_ENABLED do
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for _, obj in ipairs(Workspace:GetDescendants()) do
+                        if not AUTO_PICKUP_ENABLED then break end
+                        if obj:IsA("BasePart") and (obj.Name:lower():find("drop") or obj.Name:lower():find("coin") or obj.Name:lower():find("item")) then
+                            safeTouchInterest(hrp, obj)
+                        end
+                    end
+                end
+                task.wait(0.4)
+            end
+        end)
+    end
+end)
+
+AutoCandyBtn.MouseButton1Click:Connect(function()
+    AUTO_CANDY_ENABLED = not AUTO_CANDY_ENABLED
+    AutoCandyBtn.Text = AUTO_CANDY_ENABLED and "🍬 Auto Farm Candies/Souls: ON" or "🍬 Auto Farm Candies/Souls: OFF"
+    AutoCandyBtn.BackgroundColor3 = AUTO_CANDY_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    AutoCandyStroke.Color = AUTO_CANDY_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if AUTO_CANDY_ENABLED then
+        task.spawn(function()
+            while AUTO_CANDY_ENABLED do
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for _, obj in ipairs(Workspace:GetDescendants()) do
+                        if not AUTO_CANDY_ENABLED then break end
+                        local n = obj.Name:lower()
+                        if n:find("candy") or n:find("soul") or n:find("corn") or n:find("bucket") then
+                            local part = obj:IsA("BasePart") and obj or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+                            if part then
+                                hrp.CFrame = part.CFrame + Vector3.new(0, 2, 0)
+                                safeTouchInterest(hrp, part)
+                                task.wait(0.2)
+                            end
+                        end
+                    end
+                end
+                task.wait(0.3)
+            end
+        end)
+    end
+end)
+
+-- Infinite Stamina Loop
+InfStaminaBtn.MouseButton1Click:Connect(function()
+    INF_STAMINA_ENABLED = not INF_STAMINA_ENABLED
+    InfStaminaBtn.Text = INF_STAMINA_ENABLED and "⚡ Infinite Stamina: ON" or "⚡ Infinite Stamina: OFF"
+    InfStaminaBtn.BackgroundColor3 = INF_STAMINA_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    InfStaminaStroke.Color = INF_STAMINA_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if INF_STAMINA_ENABLED then
+        task.spawn(function()
+            while INF_STAMINA_ENABLED do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if char then
+                        if char:FindFirstChild("Stamina") then char.Stamina.Value = 999999 end
+                        char:SetAttribute("Stamina", 999999)
+                        char:SetAttribute("MaxStamina", 999999)
+                    end
+                end)
+                task.wait(0.2)
+            end
+        end)
+    end
+end)
+
 SpeedBtn.MouseButton1Click:Connect(function()
     SPEED_BOOST_ENABLED = not SPEED_BOOST_ENABLED
-    SpeedBtn.Text = SPEED_BOOST_ENABLED and "⚡ Speed Boost: ON" or "⚡ Speed Boost: OFF"
+    SpeedBtn.Text = SPEED_BOOST_ENABLED and "🚀 Speed Boost: ON" or "🚀 Speed Boost: OFF"
     SpeedBtn.BackgroundColor3 = SPEED_BOOST_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     SpeedStroke.Color = SPEED_BOOST_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
     
