@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- CAPYBARA HUB - ULTIMATE AUTOMATION & STAMINA EDITION 🍊
+-- CAPYBARA HUB - MOBILE & MINI-GAME EDITION 🍊
 --------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -8,41 +8,39 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local ParentGui = (pcall(function() return gethui() end) and gethui()) or PlayerGui
 
 --------------------------------------------------------------------------------
 -- ANIMATED LOADING SCREEN
 --------------------------------------------------------------------------------
-local LoadScreenGui = Instance.new("ScreenGui")
+local LoadScreenGui = Instance.new("ScreenGui", ParentGui)
 LoadScreenGui.Name = "CapybaraHubLoading"
 LoadScreenGui.ResetOnSpawn = false
-LoadScreenGui.Parent = PlayerGui
 
-local LoadFrame = Instance.new("Frame")
+local LoadFrame = Instance.new("Frame", LoadScreenGui)
 LoadFrame.Size = UDim2.new(0, 0, 0, 0)
 LoadFrame.Position = UDim2.new(0.5, -220, 0.5, -110)
 LoadFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 LoadFrame.BackgroundTransparency = 0.1
 LoadFrame.BorderSizePixel = 0
-LoadFrame.Parent = LoadScreenGui
 
-local LoadCorner = Instance.new("UICorner")
+local LoadCorner = Instance.new("UICorner", LoadFrame)
 LoadCorner.CornerRadius = UDim.new(0, 16)
-LoadCorner.Parent = LoadFrame
 
-local LoadStroke = Instance.new("UIStroke")
+local LoadStroke = Instance.new("UIStroke", LoadFrame)
 LoadStroke.Thickness = 2.5
 LoadStroke.Color = Color3.fromRGB(255, 170, 0)
-LoadStroke.Parent = LoadFrame
 
 TweenService:Create(LoadFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
     Size = UDim2.new(0, 440, 0, 220),
     BackgroundTransparency = 0.05
 }):Play()
 
-local LoadTitle = Instance.new("TextLabel")
+local LoadTitle = Instance.new("TextLabel", LoadFrame)
 LoadTitle.Size = UDim2.new(1, 0, 0, 50)
 LoadTitle.Position = UDim2.new(0, 0, 0, 15)
 LoadTitle.BackgroundTransparency = 1
@@ -50,22 +48,19 @@ LoadTitle.Text = "🍊 CAPYBARA HUB — LOADING 🍊"
 LoadTitle.TextColor3 = Color3.fromRGB(255, 225, 190)
 LoadTitle.Font = Enum.Font.GothamBold
 LoadTitle.TextSize = 15
-LoadTitle.Parent = LoadFrame
 
-local BarBg = Instance.new("Frame")
+local BarBg = Instance.new("Frame", LoadFrame)
 BarBg.Size = UDim2.new(0.88, 0, 0, 14)
 BarBg.Position = UDim2.new(0.06, 0, 0.42, 0)
 BarBg.BackgroundColor3 = Color3.fromRGB(45, 30, 22)
-BarBg.Parent = LoadFrame
 Instance.new("UICorner", BarBg).CornerRadius = UDim.new(0, 6)
 
-local BarFill = Instance.new("Frame")
+local BarFill = Instance.new("Frame", BarBg)
 BarFill.Size = UDim2.new(0, 0, 1, 0)
 BarFill.BackgroundColor3 = Color3.fromRGB(255, 150, 40)
-BarFill.Parent = BarBg
 Instance.new("UICorner", BarFill).CornerRadius = UDim.new(0, 6)
 
-local StatusLabel = Instance.new("TextLabel")
+local StatusLabel = Instance.new("TextLabel", LoadFrame)
 StatusLabel.Size = UDim2.new(1, 0, 0, 30)
 StatusLabel.Position = UDim2.new(0, 0, 0.62, 0)
 StatusLabel.BackgroundTransparency = 1
@@ -73,12 +68,10 @@ StatusLabel.Text = "Initializing Modules..."
 StatusLabel.TextColor3 = Color3.fromRGB(200, 150, 120)
 StatusLabel.Font = Enum.Font.GothamMedium
 StatusLabel.TextSize = 12
-StatusLabel.Parent = LoadFrame
 
--- Loading animation steps
 local steps = {
     {text = "Bypassing Client Hooks...", progress = 0.35},
-    {text = "Loading Automation & ESP Systems...", progress = 0.75},
+    {text = "Loading Mobile & Mini-Game Modules...", progress = 0.75},
     {text = "Welcome, " .. LocalPlayer.Name .. "!", progress = 1.0}
 }
 
@@ -106,6 +99,11 @@ local AUTO_POINTS_ENABLED = false
 local AUTO_PICKUP_ENABLED = false
 local AUTO_CANDY_ENABLED = false
 local INF_STAMINA_ENABLED = false
+local GHOST_WALK_ENABLED = false
+local AUTO_INTERACT_ENABLED = false
+local PLAYER_ESP_ENABLED = false
+local AUTO_RESPAWN_ENABLED = false
+local MINI_GAME_ACTIVE = false
 
 --------------------------------------------------------------------------------
 -- CORE AUTOMATION & LOGIC
@@ -115,7 +113,6 @@ local function giveToolToInventory(toolName)
 
     local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
     local starterGear = LocalPlayer:FindFirstChild("StarterGear")
-
     local searchLocations = { ReplicatedStorage, Workspace, Lighting, game:GetService("ServerStorage") }
     local foundTool = nil
 
@@ -158,46 +155,88 @@ local function safeTouchInterest(part1, part2)
 end
 
 --------------------------------------------------------------------------------
--- MAIN HUB GUI CREATION
+-- MAIN HUB GUI CREATION (MOBILE SUPPORTED)
 --------------------------------------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui")
+local ScreenGui = Instance.new("ScreenGui", ParentGui)
 ScreenGui.Name = "CapybaraHubAdvanced"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = PlayerGui
+ScreenGui.DisplayOrder = 100
 
-local MainFrame = Instance.new("Frame")
+-- Mobile Floating Toggle Button
+local FloatingBtn = Instance.new("TextButton", ScreenGui)
+FloatingBtn.Size = UDim2.new(0, 52, 0, 52)
+FloatingBtn.Position = UDim2.new(0, 20, 0.4, -26)
+FloatingBtn.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
+FloatingBtn.Text = "🍊"
+FloatingBtn.TextSize = 26
+FloatingBtn.Active = true
+FloatingBtn.ZIndex = 200
+Instance.new("UICorner", FloatingBtn).CornerRadius = UDim.new(0, 14)
+local FloatStroke = Instance.new("UIStroke", FloatingBtn)
+FloatStroke.Thickness = 2
+FloatStroke.Color = Color3.fromRGB(255, 170, 0)
+
+-- Draggable Helper for Mobile Button & Main Frame
+local function makeDraggable(guiFrame, dragHandle)
+    dragHandle = dragHandle or guiFrame
+    local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
+    
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            guiFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+makeDraggable(FloatingBtn)
+
+local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Size = UDim2.new(0, 380, 0, 740)
 MainFrame.Position = UDim2.new(0.5, -190, 0.3, -260)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Parent = ScreenGui
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 20)
 
-local GlowFrame = Instance.new("Frame")
+local GlowFrame = Instance.new("Frame", MainFrame)
 GlowFrame.Size = UDim2.new(1, 12, 1, 12)
 GlowFrame.Position = UDim2.new(0, -6, 0, -6)
 GlowFrame.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
 GlowFrame.BackgroundTransparency = 0.8
 GlowFrame.ZIndex = 0
-GlowFrame.Parent = MainFrame
 Instance.new("UICorner", GlowFrame).CornerRadius = UDim.new(0, 24)
 
-local UIStroke = Instance.new("UIStroke")
+local UIStroke = Instance.new("UIStroke", MainFrame)
 UIStroke.Thickness = 2.5
 UIStroke.Transparency = 0.1
 UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-UIStroke.Parent = MainFrame
 
-local UIGradient = Instance.new("UIGradient")
+local UIGradient = Instance.new("UIGradient", UIStroke)
 UIGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 185, 90)),
     ColorSequenceKeypoint.new(0.5, Color3.fromRGB(235, 110, 45)),
     ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 185, 90))
 })
-UIGradient.Parent = UIStroke
 
 task.spawn(function()
     while task.wait(0.03) do
@@ -205,16 +244,16 @@ task.spawn(function()
     end
 end)
 
-local TitleBar = Instance.new("Frame")
+local TitleBar = Instance.new("Frame", MainFrame)
 TitleBar.Size = UDim2.new(1, 0, 0, 56)
 TitleBar.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
 TitleBar.BackgroundTransparency = 0.2
 TitleBar.Active = true
-TitleBar.Parent = MainFrame
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 20)
+makeDraggable(MainFrame, TitleBar)
 
-local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(1, -120, 1, 0)
+local TitleText = Instance.new("TextLabel", TitleBar)
+TitleText.Size = UDim2.new(1, -60, 1, 0)
 TitleText.Position = UDim2.new(0, 16, 0, 0)
 TitleText.BackgroundTransparency = 1
 TitleText.Text = "🍊 CAPYBARA HUB V2"
@@ -222,63 +261,50 @@ TitleText.TextColor3 = Color3.fromRGB(255, 225, 190)
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Font = Enum.Font.GothamBold
 TitleText.TextSize = 17
-TitleText.Parent = TitleBar
 
-local SubTitle = Instance.new("TextLabel")
+local SubTitle = Instance.new("TextLabel", TitleBar)
 SubTitle.Size = UDim2.new(1, 0, 0, 15)
 SubTitle.Position = UDim2.new(0, 16, 0, 32)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Automation, Stamina & Stats • [RightCtrl]"
+SubTitle.Text = "Mobile & Mini-Game Edition"
 SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
 SubTitle.Font = Enum.Font.GothamMedium
 SubTitle.TextSize = 10
-SubTitle.Parent = TitleBar
 
--- Dragging Functionality
-local dragging, dragInput, dragStart, startPos
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
+local CloseBtn = Instance.new("TextButton", TitleBar)
+CloseBtn.Size = UDim2.new(0, 32, 0, 32)
+CloseBtn.Position = UDim2.new(1, -40, 0.5, -16)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
 end)
 
-TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+FloatingBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
 end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-local ScrollingFrame = Instance.new("ScrollingFrame")
+local ScrollingFrame = Instance.new("ScrollingFrame", MainFrame)
 ScrollingFrame.Size = UDim2.new(1, -16, 1, -70)
 ScrollingFrame.Position = UDim2.new(0, 8, 0, 62)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(235, 140, 50)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 740)
-ScrollingFrame.Parent = MainFrame
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 1050)
 
-local UIListLayout = Instance.new("UIListLayout")
+local UIListLayout = Instance.new("UIListLayout", ScrollingFrame)
 UIListLayout.Padding = UDim.new(0, 8)
 UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Parent = ScrollingFrame
 
 local function CreateButton(text, order, initialActive)
-    local btn = Instance.new("TextButton")
+    local btn = Instance.new("TextButton", ScrollingFrame)
     btn.Size = UDim2.new(0.96, 0, 0, 42)
     btn.BackgroundColor3 = initialActive and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     btn.BackgroundTransparency = 0.15
@@ -288,44 +314,27 @@ local function CreateButton(text, order, initialActive)
     btn.TextSize = 13
     btn.LayoutOrder = order
     btn.AutoButtonColor = false
-    btn.Parent = ScrollingFrame
     
-    local corner = Instance.new("UICorner")
+    local corner = Instance.new("UICorner", btn)
     corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = btn
     
-    local stroke = Instance.new("UIStroke")
+    local stroke = Instance.new("UIStroke", btn)
     stroke.Thickness = 1.2
     stroke.Color = initialActive and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
     stroke.Transparency = 0.3
-    stroke.Parent = btn
-
-    btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.25), {BackgroundTransparency = 0.0, Size = UDim2.new(0.98, 0, 0, 42)}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.25), {Transparency = 0}):Play()
-    end)
-
-    btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.25), {BackgroundTransparency = 0.15, Size = UDim2.new(0.96, 0, 0, 42)}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.25), {Transparency = 0.3}):Play()
-    end)
     
     return btn, stroke
 end
 
 local function CreateInputBox(placeholderText, defaultText, order)
-    local frame = Instance.new("Frame")
+    local frame = Instance.new("Frame", ScrollingFrame)
     frame.Size = UDim2.new(0.96, 0, 0, 42)
     frame.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
     frame.BackgroundTransparency = 0.2
     frame.LayoutOrder = order
-    frame.Parent = ScrollingFrame
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-
-    local textBox = Instance.new("TextBox")
+    local textBox = Instance.new("TextBox", frame)
     textBox.Size = UDim2.new(0.9, 0, 0.8, 0)
     textBox.Position = UDim2.new(0.05, 0, 0.1, 0)
     textBox.BackgroundTransparency = 1
@@ -334,7 +343,6 @@ local function CreateInputBox(placeholderText, defaultText, order)
     textBox.TextColor3 = Color3.fromRGB(255, 230, 200)
     textBox.Font = Enum.Font.GothamMedium
     textBox.TextSize = 13
-    textBox.Parent = frame
 
     return textBox
 end
@@ -354,13 +362,18 @@ local AutoPickupBtn, AutoPickupStroke = CreateButton("🎁 Auto Pickup Items: OF
 local AutoCandyBtn, AutoCandyStroke = CreateButton("🍬 Auto Farm Candies/Souls: OFF", 9, false)
 local InfStaminaBtn, InfStaminaStroke = CreateButton("⚡ Infinite Stamina: OFF", 10, false)
 local SpeedBtn, SpeedStroke = CreateButton("🚀 Speed Boost: OFF", 11, false)
+local GhostWalkBtn, GhostWalkStroke = CreateButton("👻 Ghost Walk (No-Clip): OFF", 12, false)
+local AutoInteractBtn, AutoInteractStroke = CreateButton("🦇 Instant Proximity Prompts: OFF", 13, false)
+local PlayerEspBtn, PlayerEspStroke = CreateButton("👁️ Player ESP Highlighting: OFF", 14, false)
+local AutoRespawnBtn, AutoRespawnStroke = CreateButton("♻️ Auto Respawn on Death: OFF", 15, false)
+local MiniGameBtn, MiniGameStroke = CreateButton("🎮 Launch Mini-Game (Orange Catcher): OFF", 16, false)
 
 --------------------------------------------------------------------------------
 -- EVENT HANDLERS & LOOPS
 --------------------------------------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == TOGGLE_KEY then
-        ScreenGui.Enabled = not ScreenGui.Enabled
+        MainFrame.Visible = not MainFrame.Visible
     end
 end)
 
@@ -440,24 +453,23 @@ AutoCandyBtn.MouseButton1Click:Connect(function()
                 if hrp then
                     for _, obj in ipairs(Workspace:GetDescendants()) do
                         if not AUTO_CANDY_ENABLED then break end
-                        local n = obj.Name:lower()
-                        if n:find("candy") or n:find("soul") or n:find("corn") or n:find("bucket") then
+                        local n = obj.Name
+                        if n == "CandyCorns" or n == "CandyBucket" or n == "CandyPack" or n:lower():find("candycorn") or n:lower():find("candybucket") or n:lower():find("candypack") then
                             local part = obj:IsA("BasePart") and obj or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
                             if part then
                                 hrp.CFrame = part.CFrame + Vector3.new(0, 2, 0)
                                 safeTouchInterest(hrp, part)
-                                task.wait(0.2)
+                                task.wait(0.3)
                             end
                         end
                     end
                 end
-                task.wait(0.3)
+                task.wait(0.5)
             end
         end)
     end
 end)
 
--- Infinite Stamina Loop
 InfStaminaBtn.MouseButton1Click:Connect(function()
     INF_STAMINA_ENABLED = not INF_STAMINA_ENABLED
     InfStaminaBtn.Text = INF_STAMINA_ENABLED and "⚡ Infinite Stamina: ON" or "⚡ Infinite Stamina: OFF"
@@ -490,5 +502,213 @@ SpeedBtn.MouseButton1Click:Connect(function()
     local character = LocalPlayer.Character
     if character and character:FindFirstChildOfClass("Humanoid") then
         character:FindFirstChildOfClass("Humanoid").WalkSpeed = SPEED_BOOST_ENABLED and 32 or 16
+    end
+end)
+
+GhostWalkBtn.MouseButton1Click:Connect(function()
+    GHOST_WALK_ENABLED = not GHOST_WALK_ENABLED
+    GhostWalkBtn.Text = GHOST_WALK_ENABLED and "👻 Ghost Walk: ON" or "👻 Ghost Walk (No-Clip): OFF"
+    GhostWalkBtn.BackgroundColor3 = GHOST_WALK_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    GhostWalkStroke.Color = GHOST_WALK_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    RunService:BindToRenderStep("CapybaraNoClip", 1, function()
+        if GHOST_WALK_ENABLED then
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        else
+            RunService:UnbindFromRenderStep("CapybaraNoClip")
+        end
+    end)
+end)
+
+AutoInteractBtn.MouseButton1Click:Connect(function()
+    AUTO_INTERACT_ENABLED = not AUTO_INTERACT_ENABLED
+    AutoInteractBtn.Text = AUTO_INTERACT_ENABLED and "🦇 Instant Prompts: ON" or "🦇 Instant Proximity Prompts: OFF"
+    AutoInteractBtn.BackgroundColor3 = AUTO_INTERACT_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    AutoInteractStroke.Color = AUTO_INTERACT_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if AUTO_INTERACT_ENABLED then
+        task.spawn(function()
+            while AUTO_INTERACT_ENABLED do
+                for _, prompt in ipairs(Workspace:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        pcall(function() fireproximityprompt(prompt) end)
+                    end
+                end
+                task.wait(0.3)
+            end
+        end)
+    end
+end)
+
+PlayerEspBtn.MouseButton1Click:Connect(function()
+    PLAYER_ESP_ENABLED = not PLAYER_ESP_ENABLED
+    PlayerEspBtn.Text = PLAYER_ESP_ENABLED and "👁️ Player ESP: ON" or "👁️ Player ESP Highlighting: OFF"
+    PlayerEspBtn.BackgroundColor3 = PLAYER_ESP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    PlayerEspStroke.Color = PLAYER_ESP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if PLAYER_ESP_ENABLED then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local hl = p.Character:FindFirstChild("CapybaraESP") or Instance.new("Highlight")
+                hl.Name = "CapybaraESP"
+                hl.FillColor = Color3.fromRGB(255, 150, 40)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.Parent = p.Character
+            end
+        end
+    else
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then
+                local hl = p.Character:FindFirstChild("CapybaraESP")
+                if hl then hl:Destroy() end
+            end
+        end
+    end
+end)
+
+AutoRespawnBtn.MouseButton1Click:Connect(function()
+    AUTO_RESPAWN_ENABLED = not AUTO_RESPAWN_ENABLED
+    AutoRespawnBtn.Text = AUTO_RESPAWN_ENABLED and "♻️ Auto Respawn: ON" or "♻️ Auto Respawn on Death: OFF"
+    AutoRespawnBtn.BackgroundColor3 = AUTO_RESPAWN_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    AutoRespawnStroke.Color = AUTO_RESPAWN_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if AUTO_RESPAWN_ENABLED then
+        task.spawn(function()
+            while AUTO_RESPAWN_ENABLED do
+                local char = LocalPlayer.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health <= 0 then
+                    LocalPlayer:LoadCharacter()
+                    task.wait(2)
+                end
+                task.wait(1)
+            end
+        end)
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- MINI-GAME FEATURE: ORANGE CATCHER
+--------------------------------------------------------------------------------
+local MiniGameGui = nil
+local scoreVal = 0
+
+MiniGameBtn.MouseButton1Click:Connect(function()
+    MINI_GAME_ACTIVE = not MINI_GAME_ACTIVE
+    MiniGameBtn.Text = MINI_GAME_ACTIVE and "🎮 Mini-Game: ACTIVE" or "🎮 Launch Mini-Game (Orange Catcher): OFF"
+    MiniGameBtn.BackgroundColor3 = MINI_GAME_ACTIVE and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    MiniGameStroke.Color = MINI_GAME_ACTIVE and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if MINI_GAME_ACTIVE then
+        if MiniGameGui then MiniGameGui:Destroy() end
+        scoreVal = 0
+
+        MiniGameGui = Instance.new("ScreenGui", ParentGui)
+        MiniGameGui.Name = "CapybaraMiniGame"
+        MiniGameGui.ResetOnSpawn = false
+
+        local GameFrame = Instance.new("Frame", MiniGameGui)
+        GameFrame.Size = UDim2.new(0, 280, 0, 360)
+        GameFrame.Position = UDim2.new(0.8, -140, 0.4, -180)
+        GameFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
+        GameFrame.BackgroundTransparency = 0.2
+        Instance.new("UICorner", GameFrame).CornerRadius = UDim.new(0, 14)
+        Instance.new("UIStroke", GameFrame).Color = Color3.fromRGB(255, 170, 0)
+        makeDraggable(GameFrame)
+
+        local ScoreLabel = Instance.new("TextLabel", GameFrame)
+        ScoreLabel.Size = UDim2.new(1, 0, 0, 40)
+        ScoreLabel.BackgroundTransparency = 1
+        ScoreLabel.Text = "🍊 Score: 0"
+        ScoreLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        ScoreLabel.Font = Enum.Font.GothamBold
+        ScoreLabel.TextSize = 16
+
+        local PlayArea = Instance.new("Frame", GameFrame)
+        PlayArea.Size = UDim2.new(1, -20, 1, -60)
+        PlayArea.Position = UDim2.new(0, 10, 0, 50)
+        PlayArea.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
+        PlayArea.ClipsDescendants = true
+        Instance.new("UICorner", PlayArea).CornerRadius = UDim.new(0, 10)
+
+        local Basket = Instance.new("TextButton", PlayArea)
+        Basket.Size = UDim2.new(0, 70, 0, 25)
+        Basket.Position = UDim2.new(0.5, -35, 1, -30)
+        Basket.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+        Basket.Text = "🧺 Basket"
+        Basket.TextColor3 = Color3.new(1,1,1)
+        Basket.Font = Enum.Font.GothamBold
+        Basket.TextSize = 11
+        Instance.new("UICorner", Basket).CornerRadius = UDim.new(0, 6)
+
+        -- Make basket movable for touch & mouse
+        local draggingBasket = false
+        Basket.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingBasket = true
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingBasket = false
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if draggingBasket and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local relativeX = input.Position.X - PlayArea.AbsolutePosition.X
+                local clampedX = math.clamp(relativeX - 35, 0, PlayArea.AbsoluteSize.X - 70)
+                Basket.Position = UDim2.new(0, clampedX, 1, -30)
+            end
+        end)
+
+        -- Falling Orange Spawner Loop
+        task.spawn(function()
+            while MINI_GAME_ACTIVE do
+                task.wait(math.random(1, 2))
+                if not MINI_GAME_ACTIVE then break end
+
+                local Orange = Instance.new("TextButton", PlayArea)
+                Orange.Size = UDim2.new(0, 24, 0, 24)
+                Orange.Position = UDim2.new(0, math.random(10, PlayArea.AbsoluteSize.X - 34), 0, 0)
+                Orange.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
+                Orange.Text = "🍊"
+                Orange.TextSize = 14
+                Instance.new("UICorner", Orange).CornerRadius = UDim.new(1, 0)
+
+                task.spawn(function()
+                    while Orange and Orange.Parent and MINI_GAME_ACTIVE do
+                        Orange.Position = Orange.Position + UDim2.new(0, 0, 0, 4)
+                        
+                        -- Check collision with basket
+                        local orangePos = Orange.AbsolutePosition
+                        local basketPos = Basket.AbsolutePosition
+                        if math.abs(orangePos.X - basketPos.X) < 55 and math.abs(orangePos.Y - basketPos.Y) < 25 then
+                            scoreVal = scoreVal + 1
+                            ScoreLabel.Text = "🍊 Score: " .. scoreVal
+                            Orange:Destroy()
+                            break
+                        end
+
+                        if Orange.Position.Y.Offset > PlayArea.AbsoluteSize.Y then
+                            Orange:Destroy()
+                            break
+                        end
+                        task.wait(0.03)
+                    end
+                end)
+            end
+        end)
+    else
+        if MiniGameGui then
+            MiniGameGui:Destroy()
+            MiniGameGui = nil
+        end
     end
 end)
