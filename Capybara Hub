@@ -103,6 +103,7 @@ local GHOST_WALK_ENABLED = false
 local AUTO_INTERACT_ENABLED = false
 local PLAYER_ESP_ENABLED = false
 local RAKE_ESP_ENABLED = false
+local PULL_RAKE_CLICK_ENABLED = false
 local AUTO_RESPAWN_ENABLED = false
 local MINI_GAME_ACTIVE = false
 
@@ -167,7 +168,7 @@ local function findTheRakeModel()
 end
 
 --------------------------------------------------------------------------------
--- MAIN HUB GUI CREATION (MOBILE SUPPORTED)
+-- MAIN HUB GUI CREATION (SIDEWAYS / HORIZONTAL LAYOUT)
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui", ParentGui)
 ScreenGui.Name = "CapybaraHubAdvanced"
@@ -221,8 +222,8 @@ end
 makeDraggable(FloatingBtn)
 
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 380, 0, 820)
-MainFrame.Position = UDim2.new(0.5, -190, 0.3, -260)
+MainFrame.Size = UDim2.new(0, 820, 0, 420) -- Sideways landscape sizing
+MainFrame.Position = UDim2.new(0.5, -410, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
@@ -257,7 +258,7 @@ task.spawn(function()
 end)
 
 local TitleBar = Instance.new("Frame", MainFrame)
-TitleBar.Size = UDim2.new(1, 0, 0, 56)
+TitleBar.Size = UDim2.new(1, 0, 0, 50)
 TitleBar.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
 TitleBar.BackgroundTransparency = 0.2
 TitleBar.Active = true
@@ -268,25 +269,15 @@ local TitleText = Instance.new("TextLabel", TitleBar)
 TitleText.Size = UDim2.new(1, -60, 1, 0)
 TitleText.Position = UDim2.new(0, 16, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "🍊 CAPYBARA HUB V2"
+TitleText.Text = "🍊 CAPYBARA HUB V2 (SIDEWAYS)"
 TitleText.TextColor3 = Color3.fromRGB(255, 225, 190)
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Font = Enum.Font.GothamBold
-TitleText.TextSize = 17
-
-local SubTitle = Instance.new("TextLabel", TitleBar)
-SubTitle.Size = UDim2.new(1, 0, 0, 15)
-SubTitle.Position = UDim2.new(0, 16, 0, 32)
-SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "Mobile & Mini-Game Edition"
-SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
-SubTitle.TextXAlignment = Enum.TextXAlignment.Left
-SubTitle.Font = Enum.Font.GothamMedium
-SubTitle.TextSize = 10
+TitleText.TextSize = 16
 
 local CloseBtn = Instance.new("TextButton", TitleBar)
-CloseBtn.Size = UDim2.new(0, 32, 0, 32)
-CloseBtn.Position = UDim2.new(1, -40, 0.5, -16)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -40, 0.5, -15)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -302,28 +293,29 @@ FloatingBtn.MouseButton1Click:Connect(function()
 end)
 
 local ScrollingFrame = Instance.new("ScrollingFrame", MainFrame)
-ScrollingFrame.Size = UDim2.new(1, -16, 1, -70)
-ScrollingFrame.Position = UDim2.new(0, 8, 0, 62)
+ScrollingFrame.Size = UDim2.new(1, -16, 1, -62)
+ScrollingFrame.Position = UDim2.new(0, 8, 0, 56)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(235, 140, 50)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 1250)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 450)
 
-local UIListLayout = Instance.new("UIListLayout", ScrollingFrame)
-UIListLayout.Padding = UDim.new(0, 8)
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+-- UIGridLayout for multi-column sideways arrangement
+local UIGridLayout = Instance.new("UIGridLayout", ScrollingFrame)
+UIGridLayout.CellSize = UDim2.new(0, 255, 0, 42)
+UIGridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+UIGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function CreateButton(text, order, initialActive)
     local btn = Instance.new("TextButton", ScrollingFrame)
-    btn.Size = UDim2.new(0.96, 0, 0, 42)
     btn.BackgroundColor3 = initialActive and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     btn.BackgroundTransparency = 0.15
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 245, 235)
     btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 13
+    btn.TextSize = 12
     btn.LayoutOrder = order
     btn.AutoButtonColor = false
     
@@ -340,7 +332,6 @@ end
 
 local function CreateInputBox(placeholderText, defaultText, order)
     local frame = Instance.new("Frame", ScrollingFrame)
-    frame.Size = UDim2.new(0.96, 0, 0, 42)
     frame.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
     frame.BackgroundTransparency = 0.2
     frame.LayoutOrder = order
@@ -354,7 +345,7 @@ local function CreateInputBox(placeholderText, defaultText, order)
     textBox.PlaceholderText = placeholderText
     textBox.TextColor3 = Color3.fromRGB(255, 230, 200)
     textBox.Font = Enum.Font.GothamMedium
-    textBox.TextSize = 13
+    textBox.TextSize = 12
 
     return textBox
 end
@@ -369,7 +360,7 @@ local AddPointsBtn, AddPointsStroke = CreateButton("🪙 Add Points", 4, false)
 local KillsTextBox = CreateInputBox("Enter Kills Amount...", customKillsAmount, 5)
 local AddKillsBtn, AddKillsStroke = CreateButton("⚔️ Add Kills", 6, false)
 
-local PullRakeBtn, PullRakeStroke = CreateButton("🔗 Pull THE_RAKE to Arm", 7, false)
+local PullRakeClickBtn, PullRakeClickStroke = CreateButton("🔗 Pull Rake on Click: OFF", 7, false)
 
 local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 8, false)
 local AutoPickupBtn, AutoPickupStroke = CreateButton("🎁 Auto Pickup Items: OFF", 9, false)
@@ -413,38 +404,32 @@ AddKillsBtn.MouseButton1Click:Connect(function()
     task.delay(2, function() AddKillsBtn.Text = "⚔️ Add Kills" end)
 end)
 
--- PULL THE_RAKE TO ARM FEATURE
-PullRakeBtn.MouseButton1Click:Connect(function()
-    local rakeModel, rakePart = findTheRakeModel()
-    if not rakeModel or not rakePart then
-        PullRakeBtn.Text = "❌ THE_RAKE Not Found!"
-        task.delay(2, function() PullRakeBtn.Text = "🔗 Pull THE_RAKE to Arm" end)
-        return
-    end
+-- PULL THE_RAKE ON ANY CLICK (ON/OFF TOGGLE)
+PullRakeClickBtn.MouseButton1Click:Connect(function()
+    PULL_RAKE_CLICK_ENABLED = not PULL_RAKE_CLICK_ENABLED
+    PullRakeClickBtn.Text = PULL_RAKE_CLICK_ENABLED and "🔗 Pull Rake on Click: ON" or "🔗 Pull Rake on Click: OFF"
+    PullRakeClickBtn.BackgroundColor3 = PULL_RAKE_CLICK_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    PullRakeClickStroke.Color = PULL_RAKE_CLICK_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+end)
 
-    local char = LocalPlayer.Character
-    local rightArm = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("HumanoidRootPart"))
-    
-    if not rightArm then
-        PullRakeBtn.Text = "❌ Character Arm Not Found!"
-        task.delay(2, function() PullRakeBtn.Text = "🔗 Pull THE_RAKE to Arm" end)
-        return
-    end
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if PULL_RAKE_CLICK_ENABLED and not gpe then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local rakeModel, rakePart = findTheRakeModel()
+            local char = LocalPlayer.Character
+            local rightArm = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("HumanoidRootPart"))
 
-    -- Save original position to return him back safely
-    local origCFrame = rakePart.CFrame
-
-    -- Teleport to right arm / hand
-    rakePart.CFrame = rightArm.CFrame * CFrame.new(0, 0, -2)
-    PullRakeBtn.Text = "✅ PULLED THE_RAKE TO ARM!"
-
-    -- Return back after 0.5 seconds
-    task.delay(0.5, function()
-        if rakePart and rakePart.Parent then
-            rakePart.CFrame = origCFrame
+            if rakeModel and rakePart and rightArm then
+                local origCFrame = rakePart.CFrame
+                rakePart.CFrame = rightArm.CFrame * CFrame.new(0, 0, -2)
+                task.delay(0.35, function()
+                    if rakePart and rakePart.Parent then
+                        rakePart.CFrame = origCFrame
+                    end
+                end)
+            end
         end
-        PullRakeBtn.Text = "🔗 Pull THE_RAKE to Arm"
-    end)
+    end
 end)
 
 AutoPointsBtn.MouseButton1Click:Connect(function()
@@ -519,10 +504,10 @@ AutoCandyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- FIXED INF STAMINA (USING FIRESIGNAL / FIREEVENT)
+-- INF STAMINA (FIRESIGNAL + CHARACTER ATTRIBUTES)
 InfStaminaBtn.MouseButton1Click:Connect(function()
     INF_STAMINA_ENABLED = not INF_STAMINA_ENABLED
-    InfStaminaBtn.Text = INF_STAMINA_ENABLED and "⚡ Infinite Stamina: ON" or "⚡ Infinite Stamina:: OFF"
+    InfStaminaBtn.Text = INF_STAMINA_ENABLED and "⚡ Infinite Stamina: ON" or "⚡ Infinite Stamina: OFF"
     InfStaminaBtn.BackgroundColor3 = INF_STAMINA_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     InfStaminaStroke.Color = INF_STAMINA_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -631,7 +616,6 @@ PlayerEspBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- FIXED THE_RAKE ESP (DYNAMIC HIGHLIGHT TRACKER)
 RakeEspBtn.MouseButton1Click:Connect(function()
     RAKE_ESP_ENABLED = not RAKE_ESP_ENABLED
     RakeEspBtn.Text = RAKE_ESP_ENABLED and "🚨 THE_RAKE ESP: ON" or "🚨 THE_RAKE ESP: OFF"
@@ -739,7 +723,6 @@ MiniGameBtn.MouseButton1Click:Connect(function()
         Basket.TextSize = 11
         Instance.new("UICorner", Basket).CornerRadius = UDim.new(0, 6)
 
-        -- Make basket movable for touch & mouse
         local draggingBasket = false
         Basket.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -759,7 +742,6 @@ MiniGameBtn.MouseButton1Click:Connect(function()
             end
         end)
 
-        -- Falling Orange Spawner Loop
         task.spawn(function()
             while MINI_GAME_ACTIVE do
                 task.wait(math.random(1, 2))
@@ -777,12 +759,11 @@ MiniGameBtn.MouseButton1Click:Connect(function()
                     while Orange and Orange.Parent and MINI_GAME_ACTIVE do
                         Orange.Position = Orange.Position + UDim2.new(0, 0, 0, 4)
                         
-                        -- Check collision with basket
                         local orangePos = Orange.AbsolutePosition
                         local basketPos = Basket.AbsolutePosition
                         if math.abs(orangePos.X - basketPos.X) < 55 and math.abs(orangePos.Y - basketPos.Y) < 25 then
                             scoreVal = scoreVal + 1
-                            ScoreLabel.Text = "🍊 Score: " .. scoreVal
+                            ScoreLabel.Text = "🍊 Score: " + scoreVal
                             Orange:Destroy()
                             break
                         end
