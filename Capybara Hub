@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- CAPYBARA HUB - SIDEWAYS HORIZONTAL EDITION 🍊
+-- CAPYBARA HUB - MOBILE & MINI-GAME EDITION 🍊
 --------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -13,10 +13,6 @@ local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local ParentGui = (pcall(function() return gethui() end) and gethui()) or PlayerGui
-
-local VirtualUser = pcall(function() return game:GetService("VirtualUser") end) and game:GetService("VirtualUser") or nil
-local RAKE_NAME = "the_rake"
-local TARGET_NAME = "doofmmy"
 
 --------------------------------------------------------------------------------
 -- ANIMATED LOADING SCREEN
@@ -75,7 +71,7 @@ StatusLabel.TextSize = 12
 
 local steps = {
     {text = "Bypassing Client Hooks...", progress = 0.35},
-    {text = "Loading Sideways Grid & Rake Modules...", progress = 0.75},
+    {text = "Loading Mobile & Mini-Game Modules...", progress = 0.75},
     {text = "Welcome, " .. LocalPlayer.Name .. "!", progress = 1.0}
 }
 
@@ -106,10 +102,9 @@ local INF_STAMINA_ENABLED = false
 local GHOST_WALK_ENABLED = false
 local AUTO_INTERACT_ENABLED = false
 local PLAYER_ESP_ENABLED = false
-local AUTO_RESPAWN_ENABLED = false
-local LUCK_250_ENABLED = false
 local RAKE_ESP_ENABLED = false
-local AUTO_FARM_RAKE_ENABLED = false
+local AUTO_RESPAWN_ENABLED = false
+local MINI_GAME_ACTIVE = false
 
 --------------------------------------------------------------------------------
 -- CORE AUTOMATION & LOGIC
@@ -160,23 +155,11 @@ local function safeTouchInterest(part1, part2)
     end
 end
 
-local function executeSpamClick()
-    local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
-    if tool then
-        pcall(function() tool:Activate() end)
-    elseif VirtualUser then
-        pcall(function()
-            VirtualUser:Button1Down(Vector2.zero, Workspace.CurrentCamera.CFrame)
-            VirtualUser:Button1Up(Vector2.zero, Workspace.CurrentCamera.CFrame)
-        end)
-    end
-end
-
-local function findTargetModel(query)
-    local qLower = query:lower()
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") and obj.Name:lower():find(qLower) then
-            local p = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChildWhichIsA("BasePart")
+-- HELPER TO FIND THE_RAKE EXACTLY
+local function findTheRakeModel()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and (obj.Name == "THE_RAKE" or obj.Name:lower() == "the_rake" or obj.Name:lower():find("rake")) then
+            local p = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")
             if p then return obj, p end
         end
     end
@@ -184,10 +167,10 @@ local function findTargetModel(query)
 end
 
 --------------------------------------------------------------------------------
--- MAIN HUB GUI CREATION (SIDEWAYS / HORIZONTAL GRID LAYOUT)
+-- MAIN HUB GUI CREATION (MOBILE SUPPORTED)
 --------------------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui", ParentGui)
-ScreenGui.Name = "CapybaraHubSideways"
+ScreenGui.Name = "CapybaraHubAdvanced"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 100
 
@@ -205,7 +188,7 @@ local FloatStroke = Instance.new("UIStroke", FloatingBtn)
 FloatStroke.Thickness = 2
 FloatStroke.Color = Color3.fromRGB(255, 170, 0)
 
--- Draggable Helper
+-- Draggable Helper for Mobile Button & Main Frame
 local function makeDraggable(guiFrame, dragHandle)
     dragHandle = dragHandle or guiFrame
     local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
@@ -237,10 +220,9 @@ end
 
 makeDraggable(FloatingBtn)
 
--- Sideways Wide Frame
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 780, 0, 440)
-MainFrame.Position = UDim2.new(0.5, -390, 0.5, -220)
+MainFrame.Size = UDim2.new(0, 380, 0, 820)
+MainFrame.Position = UDim2.new(0.5, -190, 0.3, -260)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
@@ -275,7 +257,7 @@ task.spawn(function()
 end)
 
 local TitleBar = Instance.new("Frame", MainFrame)
-TitleBar.Size = UDim2.new(1, 0, 0, 50)
+TitleBar.Size = UDim2.new(1, 0, 0, 56)
 TitleBar.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
 TitleBar.BackgroundTransparency = 0.2
 TitleBar.Active = true
@@ -286,11 +268,21 @@ local TitleText = Instance.new("TextLabel", TitleBar)
 TitleText.Size = UDim2.new(1, -60, 1, 0)
 TitleText.Position = UDim2.new(0, 16, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "🍊 CAPYBARA HUB V2 — SIDEWAYS EDITION"
+TitleText.Text = "🍊 CAPYBARA HUB V2"
 TitleText.TextColor3 = Color3.fromRGB(255, 225, 190)
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Font = Enum.Font.GothamBold
-TitleText.TextSize = 16
+TitleText.TextSize = 17
+
+local SubTitle = Instance.new("TextLabel", TitleBar)
+SubTitle.Size = UDim2.new(1, 0, 0, 15)
+SubTitle.Position = UDim2.new(0, 16, 0, 32)
+SubTitle.BackgroundTransparency = 1
+SubTitle.Text = "Mobile & Mini-Game Edition"
+SubTitle.TextColor3 = Color3.fromRGB(180, 135, 100)
+SubTitle.TextXAlignment = Enum.TextXAlignment.Left
+SubTitle.Font = Enum.Font.GothamMedium
+SubTitle.TextSize = 10
 
 local CloseBtn = Instance.new("TextButton", TitleBar)
 CloseBtn.Size = UDim2.new(0, 32, 0, 32)
@@ -309,38 +301,34 @@ FloatingBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Sideways Scrolling Grid Container
 local ScrollingFrame = Instance.new("ScrollingFrame", MainFrame)
-ScrollingFrame.Size = UDim2.new(1, -16, 1, -62)
-ScrollingFrame.Position = UDim2.new(0, 8, 0, 56)
+ScrollingFrame.Size = UDim2.new(1, -16, 1, -70)
+ScrollingFrame.Position = UDim2.new(0, 8, 0, 62)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 4
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(235, 140, 50)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 1250)
 
-local UIGridLayout = Instance.new("UIGridLayout", ScrollingFrame)
-UIGridLayout.CellSize = UDim2.new(0.31, 0, 0, 42)
-UIGridLayout.CellPadding = UDim2.new(0.02, 0, 0, 10)
-UIGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-UIGridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIGridLayout.AbsoluteContentSize.Y + 20)
-end)
+local UIListLayout = Instance.new("UIListLayout", ScrollingFrame)
+UIListLayout.Padding = UDim.new(0, 8)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 local function CreateButton(text, order, initialActive)
     local btn = Instance.new("TextButton", ScrollingFrame)
+    btn.Size = UDim2.new(0.96, 0, 0, 42)
     btn.BackgroundColor3 = initialActive and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     btn.BackgroundTransparency = 0.15
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 245, 235)
     btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 12
+    btn.TextSize = 13
     btn.LayoutOrder = order
     btn.AutoButtonColor = false
     
     local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 12)
     
     local stroke = Instance.new("UIStroke", btn)
     stroke.Thickness = 1.2
@@ -352,45 +340,48 @@ end
 
 local function CreateInputBox(placeholderText, defaultText, order)
     local frame = Instance.new("Frame", ScrollingFrame)
+    frame.Size = UDim2.new(0.96, 0, 0, 42)
     frame.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
     frame.BackgroundTransparency = 0.2
     frame.LayoutOrder = order
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
     local textBox = Instance.new("TextBox", frame)
-    textBox.Size = UDim2.new(1, 0, 1, 0)
+    textBox.Size = UDim2.new(0.9, 0, 0.8, 0)
+    textBox.Position = UDim2.new(0.05, 0, 0.1, 0)
     textBox.BackgroundTransparency = 1
     textBox.Text = tostring(defaultText)
     textBox.PlaceholderText = placeholderText
     textBox.TextColor3 = Color3.fromRGB(255, 230, 200)
     textBox.Font = Enum.Font.GothamMedium
-    textBox.TextSize = 12
+    textBox.TextSize = 13
 
     return textBox
 end
 
--- UI ELEMENTS (Sideways Layout Grid)
-local ToolTextBox = CreateInputBox("Tool Name...", targetToolName, 1)
-local GiveToolBtn, GiveToolStroke = CreateButton("🎁 Copy Tool", 2, false)
+-- UI ELEMENTS
+local ToolTextBox = CreateInputBox("Enter Tool Name...", targetToolName, 1)
+local GiveToolBtn, GiveToolStroke = CreateButton("🎁 Copy Tool to Inventory", 2, false)
 
-local PointsTextBox = CreateInputBox("Points Amt...", customPointsAmount, 3)
+local PointsTextBox = CreateInputBox("Enter Points Amount...", customPointsAmount, 3)
 local AddPointsBtn, AddPointsStroke = CreateButton("🪙 Add Points", 4, false)
 
-local KillsTextBox = CreateInputBox("Kills Amt...", customKillsAmount, 5)
+local KillsTextBox = CreateInputBox("Enter Kills Amount...", customKillsAmount, 5)
 local AddKillsBtn, AddKillsStroke = CreateButton("⚔️ Add Kills", 6, false)
 
-local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Points: OFF", 7, false)
-local AutoPickupBtn, AutoPickupStroke = CreateButton("🎁 Auto Pickup: OFF", 8, false)
-local AutoCandyBtn, AutoCandyStroke = CreateButton("🍬 Auto Candy: OFF", 9, false)
-local InfStaminaBtn, InfStaminaStroke = CreateButton("⚡ Inf Stamina: OFF", 10, false)
-local SpeedBtn, SpeedStroke = CreateButton("🚀 Speed Boost: OFF", 11, false)
-local GhostWalkBtn, GhostWalkStroke = CreateButton("👻 Ghost Walk: OFF", 12, false)
-local AutoInteractBtn, AutoInteractStroke = CreateButton("🦇 Auto Prompts: OFF", 13, false)
-local PlayerEspBtn, PlayerEspStroke = CreateButton("👁️ Player ESP: OFF", 14, false)
-local AutoRespawnBtn, AutoRespawnStroke = CreateButton("♻️ Auto Respawn: OFF", 15, false)
-local Luck250Btn, Luck250Stroke = CreateButton("🍀 Force Luck 250%: OFF", 16, false)
-local RakeEspBtn, RakeEspStroke = CreateButton("🚨 The_Rake ESP: OFF", 17, false)
-local AutoFarmRakeBtn, AutoFarmRakeStroke = CreateButton("👹 Auto Farm Rake: OFF", 18, false)
+local PullRakeBtn, PullRakeStroke = CreateButton("🔗 Pull THE_RAKE to Arm", 7, false)
+
+local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 8, false)
+local AutoPickupBtn, AutoPickupStroke = CreateButton("🎁 Auto Pickup Items: OFF", 9, false)
+local AutoCandyBtn, AutoCandyStroke = CreateButton("🍬 Auto Farm Candies/Souls: OFF", 10, false)
+local InfStaminaBtn, InfStaminaStroke = CreateButton("⚡ Infinite Stamina: OFF", 11, false)
+local SpeedBtn, SpeedStroke = CreateButton("🚀 Speed Boost: OFF", 12, false)
+local GhostWalkBtn, GhostWalkStroke = CreateButton("👻 Ghost Walk (No-Clip): OFF", 13, false)
+local AutoInteractBtn, AutoInteractStroke = CreateButton("🦇 Instant Proximity Prompts: OFF", 14, false)
+local PlayerEspBtn, PlayerEspStroke = CreateButton("👁️ Player ESP Highlighting: OFF", 15, false)
+local RakeEspBtn, RakeEspStroke = CreateButton("🚨 THE_RAKE ESP: OFF", 16, false)
+local AutoRespawnBtn, AutoRespawnStroke = CreateButton("♻️ Auto Respawn on Death: OFF", 17, false)
+local MiniGameBtn, MiniGameStroke = CreateButton("🎮 Launch Mini-Game (Orange Catcher): OFF", 18, false)
 
 --------------------------------------------------------------------------------
 -- EVENT HANDLERS & LOOPS
@@ -404,27 +395,61 @@ end)
 GiveToolBtn.MouseButton1Click:Connect(function()
     local toolName = ToolTextBox.Text ~= "" and ToolTextBox.Text or targetToolName
     local success = giveToolToInventory(toolName)
-    GiveToolBtn.Text = success and "✅ Copied!" or "❌ Not Found!"
-    task.delay(2, function() GiveToolBtn.Text = "🎁 Copy Tool" end)
+    GiveToolBtn.Text = success and ("✅ Copied " .. toolName .. "!") or "❌ Tool Not Found!"
+    task.delay(2, function() GiveToolBtn.Text = "🎁 Copy Tool to Inventory" end)
 end)
 
 AddPointsBtn.MouseButton1Click:Connect(function()
     local pts = tonumber(PointsTextBox.Text) or customPointsAmount
     local success = modifyStat("Points", pts)
-    AddPointsBtn.Text = success and "✅ Added!" or "❌ Missing Stat!"
+    AddPointsBtn.Text = success and ("✅ Added +" .. pts .. " Points!") or "❌ Leaderstats 'Points' Missing!"
     task.delay(2, function() AddPointsBtn.Text = "🪙 Add Points" end)
 end)
 
 AddKillsBtn.MouseButton1Click:Connect(function()
     local kills = tonumber(KillsTextBox.Text) or customKillsAmount
     local success = modifyStat("Kills", kills)
-    AddKillsBtn.Text = success and "✅ Added!" or "❌ Missing Stat!"
+    AddKillsBtn.Text = success and ("✅ Added +" .. kills .. " Kills!") or "❌ Leaderstats 'Kills' Missing!"
     task.delay(2, function() AddKillsBtn.Text = "⚔️ Add Kills" end)
+end)
+
+-- PULL THE_RAKE TO ARM FEATURE
+PullRakeBtn.MouseButton1Click:Connect(function()
+    local rakeModel, rakePart = findTheRakeModel()
+    if not rakeModel or not rakePart then
+        PullRakeBtn.Text = "❌ THE_RAKE Not Found!"
+        task.delay(2, function() PullRakeBtn.Text = "🔗 Pull THE_RAKE to Arm" end)
+        return
+    end
+
+    local char = LocalPlayer.Character
+    local rightArm = char and (char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("HumanoidRootPart"))
+    
+    if not rightArm then
+        PullRakeBtn.Text = "❌ Character Arm Not Found!"
+        task.delay(2, function() PullRakeBtn.Text = "🔗 Pull THE_RAKE to Arm" end)
+        return
+    end
+
+    -- Save original position to return him back safely
+    local origCFrame = rakePart.CFrame
+
+    -- Teleport to right arm / hand
+    rakePart.CFrame = rightArm.CFrame * CFrame.new(0, 0, -2)
+    PullRakeBtn.Text = "✅ PULLED THE_RAKE TO ARM!"
+
+    -- Return back after 0.5 seconds
+    task.delay(0.5, function()
+        if rakePart and rakePart.Parent then
+            rakePart.CFrame = origCFrame
+        end
+        PullRakeBtn.Text = "🔗 Pull THE_RAKE to Arm"
+    end)
 end)
 
 AutoPointsBtn.MouseButton1Click:Connect(function()
     AUTO_POINTS_ENABLED = not AUTO_POINTS_ENABLED
-    AutoPointsBtn.Text = AUTO_POINTS_ENABLED and "🔄 Auto Points: ON" or "🔄 Auto Points: OFF"
+    AutoPointsBtn.Text = AUTO_POINTS_ENABLED and "🔄 Auto Farm Points: ON" or "🔄 Auto Farm Points: OFF"
     AutoPointsBtn.BackgroundColor3 = AUTO_POINTS_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     AutoPointsStroke.Color = AUTO_POINTS_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -440,7 +465,7 @@ end)
 
 AutoPickupBtn.MouseButton1Click:Connect(function()
     AUTO_PICKUP_ENABLED = not AUTO_PICKUP_ENABLED
-    AutoPickupBtn.Text = AUTO_PICKUP_ENABLED and "🎁 Auto Pickup: ON" or "🎁 Auto Pickup: OFF"
+    AutoPickupBtn.Text = AUTO_PICKUP_ENABLED and "🎁 Auto Pickup Items: ON" or "🎁 Auto Pickup Items: OFF"
     AutoPickupBtn.BackgroundColor3 = AUTO_PICKUP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     AutoPickupStroke.Color = AUTO_PICKUP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -465,7 +490,7 @@ end)
 
 AutoCandyBtn.MouseButton1Click:Connect(function()
     AUTO_CANDY_ENABLED = not AUTO_CANDY_ENABLED
-    AutoCandyBtn.Text = AUTO_CANDY_ENABLED and "🍬 Auto Candy: ON" or "🍬 Auto Candy: OFF"
+    AutoCandyBtn.Text = AUTO_CANDY_ENABLED and "🍬 Auto Farm Candies/Souls: ON" or "🍬 Auto Farm Candies/Souls: OFF"
     AutoCandyBtn.BackgroundColor3 = AUTO_CANDY_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     AutoCandyStroke.Color = AUTO_CANDY_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -494,9 +519,10 @@ AutoCandyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- FIXED INF STAMINA (USING FIRESIGNAL / FIREEVENT)
 InfStaminaBtn.MouseButton1Click:Connect(function()
     INF_STAMINA_ENABLED = not INF_STAMINA_ENABLED
-    InfStaminaBtn.Text = INF_STAMINA_ENABLED and "⚡ Inf Stamina: ON" or "⚡ Inf Stamina: OFF"
+    InfStaminaBtn.Text = INF_STAMINA_ENABLED and "⚡ Infinite Stamina: ON" or "⚡ Infinite Stamina:: OFF"
     InfStaminaBtn.BackgroundColor3 = INF_STAMINA_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     InfStaminaStroke.Color = INF_STAMINA_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -504,6 +530,14 @@ InfStaminaBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while INF_STAMINA_ENABLED do
                 pcall(function()
+                    local Event = ReplicatedStorage:FindFirstChild("PlayerRemotes") and ReplicatedStorage.PlayerRemotes:FindFirstChild("SetStaminaValues")
+                    if Event then
+                        if typeof(firesignal) == "function" then
+                            firesignal(Event.OnClientEvent, 100, 15, 42, 999999)
+                        elseif Event:IsA("RemoteEvent") then
+                            Event:FireServer(100, 15, 42, 999999)
+                        end
+                    end
                     local char = LocalPlayer.Character
                     if char then
                         if char:FindFirstChild("Stamina") then char.Stamina.Value = 999999 end
@@ -531,7 +565,7 @@ end)
 
 GhostWalkBtn.MouseButton1Click:Connect(function()
     GHOST_WALK_ENABLED = not GHOST_WALK_ENABLED
-    GhostWalkBtn.Text = GHOST_WALK_ENABLED and "👻 Ghost Walk: ON" or "👻 Ghost Walk: OFF"
+    GhostWalkBtn.Text = GHOST_WALK_ENABLED and "👻 Ghost Walk: ON" or "👻 Ghost Walk (No-Clip): OFF"
     GhostWalkBtn.BackgroundColor3 = GHOST_WALK_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     GhostWalkStroke.Color = GHOST_WALK_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -553,7 +587,7 @@ end)
 
 AutoInteractBtn.MouseButton1Click:Connect(function()
     AUTO_INTERACT_ENABLED = not AUTO_INTERACT_ENABLED
-    AutoInteractBtn.Text = AUTO_INTERACT_ENABLED and "🦇 Auto Prompts: ON" or "🦇 Auto Prompts: OFF"
+    AutoInteractBtn.Text = AUTO_INTERACT_ENABLED and "🦇 Instant Prompts: ON" or "🦇 Instant Proximity Prompts: OFF"
     AutoInteractBtn.BackgroundColor3 = AUTO_INTERACT_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     AutoInteractStroke.Color = AUTO_INTERACT_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -573,7 +607,7 @@ end)
 
 PlayerEspBtn.MouseButton1Click:Connect(function()
     PLAYER_ESP_ENABLED = not PLAYER_ESP_ENABLED
-    PlayerEspBtn.Text = PLAYER_ESP_ENABLED and "👁️ Player ESP: ON" or "👁️ Player ESP: OFF"
+    PlayerEspBtn.Text = PLAYER_ESP_ENABLED and "👁️ Player ESP: ON" or "👁️ Player ESP Highlighting: OFF"
     PlayerEspBtn.BackgroundColor3 = PLAYER_ESP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     PlayerEspStroke.Color = PLAYER_ESP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -597,9 +631,42 @@ PlayerEspBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- FIXED THE_RAKE ESP (DYNAMIC HIGHLIGHT TRACKER)
+RakeEspBtn.MouseButton1Click:Connect(function()
+    RAKE_ESP_ENABLED = not RAKE_ESP_ENABLED
+    RakeEspBtn.Text = RAKE_ESP_ENABLED and "🚨 THE_RAKE ESP: ON" or "🚨 THE_RAKE ESP: OFF"
+    RakeEspBtn.BackgroundColor3 = RAKE_ESP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    RakeEspStroke.Color = RAKE_ESP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+
+    if not RAKE_ESP_ENABLED then
+        local rakeModel, _ = findTheRakeModel()
+        if rakeModel then
+            local hl = rakeModel:FindFirstChild("CapybaraRakeESP")
+            if hl then hl:Destroy() end
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if RAKE_ESP_ENABLED then
+        local rakeModel, _ = findTheRakeModel()
+        if rakeModel then
+            local hl = rakeModel:FindFirstChild("CapybaraRakeESP")
+            if not hl then
+                hl = Instance.new("Highlight")
+                hl.Name = "CapybaraRakeESP"
+                hl.FillColor = Color3.fromRGB(255, 0, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.FillTransparency = 0.4
+                hl.Parent = rakeModel
+            end
+        end
+    end
+end)
+
 AutoRespawnBtn.MouseButton1Click:Connect(function()
     AUTO_RESPAWN_ENABLED = not AUTO_RESPAWN_ENABLED
-    AutoRespawnBtn.Text = AUTO_RESPAWN_ENABLED and "♻️ Auto Respawn: ON" or "♻️ Auto Respawn: OFF"
+    AutoRespawnBtn.Text = AUTO_RESPAWN_ENABLED and "♻️ Auto Respawn: ON" or "♻️ Auto Respawn on Death: OFF"
     AutoRespawnBtn.BackgroundColor3 = AUTO_RESPAWN_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
     AutoRespawnStroke.Color = AUTO_RESPAWN_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
@@ -619,76 +686,120 @@ AutoRespawnBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------------------------------------
--- NEW FEATURES: FORCE LUCK 250%, THE_RAKE ESP, AUTO FARM RAKE
+-- MINI-GAME FEATURE: ORANGE CATCHER
 --------------------------------------------------------------------------------
+local MiniGameGui = nil
+local scoreVal = 0
 
-Luck250Btn.MouseButton1Click:Connect(function()
-    LUCK_250_ENABLED = not LUCK_250_ENABLED
-    Luck250Btn.Text = LUCK_250_ENABLED and "🍀 Luck 250%: ON" or "🍀 Force Luck 250%: OFF"
-    Luck250Btn.BackgroundColor3 = LUCK_250_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    Luck250Stroke.Color = LUCK_250_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+MiniGameBtn.MouseButton1Click:Connect(function()
+    MINI_GAME_ACTIVE = not MINI_GAME_ACTIVE
+    MiniGameBtn.Text = MINI_GAME_ACTIVE and "🎮 Mini-Game: ACTIVE" or "🎮 Launch Mini-Game (Orange Catcher): OFF"
+    MiniGameBtn.BackgroundColor3 = MINI_GAME_ACTIVE and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
+    MiniGameStroke.Color = MINI_GAME_ACTIVE and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
 
-    pcall(function()
-        LocalPlayer:SetAttribute("WorldLuck", LUCK_250_ENABLED and 2.5 or 1)
-        LocalPlayer:SetAttribute("LuckMultiplier", LUCK_250_ENABLED and 2.5 or 1)
-    end)
-end)
+    if MINI_GAME_ACTIVE then
+        if MiniGameGui then MiniGameGui:Destroy() end
+        scoreVal = 0
 
-RakeEspBtn.MouseButton1Click:Connect(function()
-    RAKE_ESP_ENABLED = not RAKE_ESP_ENABLED
-    RakeEspBtn.Text = RAKE_ESP_ENABLED and "🚨 The_Rake ESP: ON" or "🚨 The_Rake ESP: OFF"
-    RakeEspBtn.BackgroundColor3 = RAKE_ESP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    RakeEspStroke.Color = RAKE_ESP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+        MiniGameGui = Instance.new("ScreenGui", ParentGui)
+        MiniGameGui.Name = "CapybaraMiniGame"
+        MiniGameGui.ResetOnSpawn = false
 
-    if not RAKE_ESP_ENABLED then
-        local rakeModel, _ = findTargetModel(RAKE_NAME)
-        if rakeModel then
-            local hl = rakeModel:FindFirstChild("CapybaraRakeESP")
-            if hl then hl:Destroy() end
-        end
-    end
-end)
+        local GameFrame = Instance.new("Frame", MiniGameGui)
+        GameFrame.Size = UDim2.new(0, 280, 0, 360)
+        GameFrame.Position = UDim2.new(0.8, -140, 0.4, -180)
+        GameFrame.BackgroundColor3 = Color3.fromRGB(20, 14, 11)
+        GameFrame.BackgroundTransparency = 0.2
+        Instance.new("UICorner", GameFrame).CornerRadius = UDim.new(0, 14)
+        Instance.new("UIStroke", GameFrame).Color = Color3.fromRGB(255, 170, 0)
+        makeDraggable(GameFrame)
 
-RunService.RenderStepped:Connect(function()
-    if RAKE_ESP_ENABLED then
-        local rakeModel, _ = findTargetModel(RAKE_NAME)
-        if not rakeModel then rakeModel, _ = findTargetModel(TARGET_NAME) end
-        
-        if rakeModel then
-            local hl = rakeModel:FindFirstChild("CapybaraRakeESP")
-            if not hl then
-                hl = Instance.new("Highlight")
-                hl.Name = "CapybaraRakeESP"
-                hl.FillColor = Color3.fromRGB(255, 0, 0)
-                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                hl.FillTransparency = 0.3
-                hl.Parent = rakeModel
-            end
-        end
-    end
-end)
+        local ScoreLabel = Instance.new("TextLabel", GameFrame)
+        ScoreLabel.Size = UDim2.new(1, 0, 0, 40)
+        ScoreLabel.BackgroundTransparency = 1
+        ScoreLabel.Text = "🍊 Score: 0"
+        ScoreLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        ScoreLabel.Font = Enum.Font.GothamBold
+        ScoreLabel.TextSize = 16
 
-AutoFarmRakeBtn.MouseButton1Click:Connect(function()
-    AUTO_FARM_RAKE_ENABLED = not AUTO_FARM_RAKE_ENABLED
-    AutoFarmRakeBtn.Text = AUTO_FARM_RAKE_ENABLED and "👹 Auto Farm Rake: ON" or "👹 Auto Farm Rake: OFF"
-    AutoFarmRakeBtn.BackgroundColor3 = AUTO_FARM_RAKE_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    AutoFarmRakeStroke.Color = AUTO_FARM_RAKE_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
+        local PlayArea = Instance.new("Frame", GameFrame)
+        PlayArea.Size = UDim2.new(1, -20, 1, -60)
+        PlayArea.Position = UDim2.new(0, 10, 0, 50)
+        PlayArea.BackgroundColor3 = Color3.fromRGB(35, 22, 16)
+        PlayArea.ClipsDescendants = true
+        Instance.new("UICorner", PlayArea).CornerRadius = UDim.new(0, 10)
 
-    if AUTO_FARM_RAKE_ENABLED then
-        task.spawn(function()
-            while AUTO_FARM_RAKE_ENABLED do
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local rakeModel, rakePart = findTargetModel(RAKE_NAME)
-                if not rakePart then rakeModel, rakePart = findTargetModel(TARGET_NAME) end
+        local Basket = Instance.new("TextButton", PlayArea)
+        Basket.Size = UDim2.new(0, 70, 0, 25)
+        Basket.Position = UDim2.new(0.5, -35, 1, -30)
+        Basket.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+        Basket.Text = "🧺 Basket"
+        Basket.TextColor3 = Color3.new(1,1,1)
+        Basket.Font = Enum.Font.GothamBold
+        Basket.TextSize = 11
+        Instance.new("UICorner", Basket).CornerRadius = UDim.new(0, 6)
 
-                if hrp and rakePart then
-                    -- Teleport safely right above his head and execute tool click
-                    hrp.CFrame = CFrame.new(rakePart.Position + Vector3.new(0, 5, 0), rakePart.Position)
-                    executeSpamClick()
-                end
-                task.wait(0.1)
+        -- Make basket movable for touch & mouse
+        local draggingBasket = false
+        Basket.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingBasket = true
             end
         end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingBasket = false
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if draggingBasket and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local relativeX = input.Position.X - PlayArea.AbsolutePosition.X
+                local clampedX = math.clamp(relativeX - 35, 0, PlayArea.AbsoluteSize.X - 70)
+                Basket.Position = UDim2.new(0, clampedX, 1, -30)
+            end
+        end)
+
+        -- Falling Orange Spawner Loop
+        task.spawn(function()
+            while MINI_GAME_ACTIVE do
+                task.wait(math.random(1, 2))
+                if not MINI_GAME_ACTIVE then break end
+
+                local Orange = Instance.new("TextButton", PlayArea)
+                Orange.Size = UDim2.new(0, 24, 0, 24)
+                Orange.Position = UDim2.new(0, math.random(10, PlayArea.AbsoluteSize.X - 34), 0, 0)
+                Orange.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
+                Orange.Text = "🍊"
+                Orange.TextSize = 14
+                Instance.new("UICorner", Orange).CornerRadius = UDim.new(1, 0)
+
+                task.spawn(function()
+                    while Orange and Orange.Parent and MINI_GAME_ACTIVE do
+                        Orange.Position = Orange.Position + UDim2.new(0, 0, 0, 4)
+                        
+                        -- Check collision with basket
+                        local orangePos = Orange.AbsolutePosition
+                        local basketPos = Basket.AbsolutePosition
+                        if math.abs(orangePos.X - basketPos.X) < 55 and math.abs(orangePos.Y - basketPos.Y) < 25 then
+                            scoreVal = scoreVal + 1
+                            ScoreLabel.Text = "🍊 Score: " .. scoreVal
+                            Orange:Destroy()
+                            break
+                        end
+
+                        if Orange.Position.Y.Offset > PlayArea.AbsoluteSize.Y then
+                            Orange:Destroy()
+                            break
+                        end
+                        task.wait(0.03)
+                    end
+                end)
+            end
+        end)
+    else
+        if MiniGameGui then
+            MiniGameGui:Destroy()
+            MiniGameGui = nil
+        end
     end
 end)
