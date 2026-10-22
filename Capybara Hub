@@ -96,8 +96,6 @@ local customKillsAmount = 10
 
 local SPEED_BOOST_ENABLED = false
 local AUTO_POINTS_ENABLED = false
-local AUTO_PICKUP_ENABLED = false
-local AUTO_CANDY_ENABLED = false
 local INF_STAMINA_ENABLED = false
 local GHOST_WALK_ENABLED = false
 local AUTO_INTERACT_ENABLED = false
@@ -146,14 +144,6 @@ local function modifyStat(statName, amount)
         end
     end
     return false
-end
-
-local function safeTouchInterest(part1, part2)
-    if typeof(firetouchinterest) == "function" then
-        pcall(function() firetouchinterest(part1, part2, 0) firetouchinterest(part1, part2, 1) end)
-    else
-        pcall(function() if not part2.Anchored then part2.CFrame = part1.CFrame end end)
-    end
 end
 
 -- HELPER TO FIND THE_RAKE EXACTLY
@@ -360,19 +350,19 @@ local AddPointsBtn, AddPointsStroke = CreateButton("🪙 Add Points", 4, false)
 local KillsTextBox = CreateInputBox("Enter Kills Amount...", customKillsAmount, 5)
 local AddKillsBtn, AddKillsStroke = CreateButton("⚔️ Add Kills", 6, false)
 
-local PullRakeClickBtn, PullRakeClickStroke = CreateButton("🔗 Pull Rake on Click: OFF", 7, false)
+local CopyBananaHubBtn, CopyBananaHubStroke = CreateButton("📋 Copy BananaHUB Loadstring", 7, false)
 
-local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 8, false)
-local AutoPickupBtn, AutoPickupStroke = CreateButton("🎁 Auto Pickup Items: OFF", 9, false)
-local AutoCandyBtn, AutoCandyStroke = CreateButton("🍬 Auto Farm Candies/Souls: OFF", 10, false)
-local InfStaminaBtn, InfStaminaStroke = CreateButton("⚡ Infinite Stamina: OFF", 11, false)
-local SpeedBtn, SpeedStroke = CreateButton("🚀 Speed Boost: OFF", 12, false)
-local GhostWalkBtn, GhostWalkStroke = CreateButton("👻 Ghost Walk (No-Clip): OFF", 13, false)
-local AutoInteractBtn, AutoInteractStroke = CreateButton("🦇 Instant Proximity Prompts: OFF", 14, false)
-local PlayerEspBtn, PlayerEspStroke = CreateButton("👁️ Player ESP Highlighting: OFF", 15, false)
-local RakeEspBtn, RakeEspStroke = CreateButton("🚨 THE_RAKE ESP: OFF", 16, false)
-local AutoRespawnBtn, AutoRespawnStroke = CreateButton("♻️ Auto Respawn on Death: OFF", 17, false)
-local MiniGameBtn, MiniGameStroke = CreateButton("🎮 Launch Mini-Game (Orange Catcher): OFF", 18, false)
+local PullRakeClickBtn, PullRakeClickStroke = CreateButton("🔗 Pull Rake on Click: OFF", 8, false)
+
+local AutoPointsBtn, AutoPointsStroke = CreateButton("🔄 Auto Farm Points: OFF", 9, false)
+local InfStaminaBtn, InfStaminaStroke = CreateButton("⚡ Infinite Stamina: OFF", 10, false)
+local SpeedBtn, SpeedStroke = CreateButton("🚀 Speed Boost: OFF", 11, false)
+local GhostWalkBtn, GhostWalkStroke = CreateButton("👻 Ghost Walk (No-Clip): OFF", 12, false)
+local AutoInteractBtn, AutoInteractStroke = CreateButton("🦇 Instant Proximity Prompts: OFF", 13, false)
+local PlayerEspBtn, PlayerEspStroke = CreateButton("👁️ Player ESP Highlighting: OFF", 14, false)
+local RakeEspBtn, RakeEspStroke = CreateButton("🚨 THE_RAKE ESP: OFF", 15, false)
+local AutoRespawnBtn, AutoRespawnStroke = CreateButton("♻️ Auto Respawn on Death: OFF", 16, false)
+local MiniGameBtn, MiniGameStroke = CreateButton("🎮 Launch Mini-Game (Orange Catcher): OFF", 17, false)
 
 --------------------------------------------------------------------------------
 -- EVENT HANDLERS & LOOPS
@@ -402,6 +392,20 @@ AddKillsBtn.MouseButton1Click:Connect(function()
     local success = modifyStat("Kills", kills)
     AddKillsBtn.Text = success and ("✅ Added +" .. kills .. " Kills!") or "❌ Leaderstats 'Kills' Missing!"
     task.delay(2, function() AddKillsBtn.Text = "⚔️ Add Kills" end)
+end)
+
+-- COPY BANANAHUB LOADSTRING BUTTON
+CopyBananaHubBtn.MouseButton1Click:Connect(function()
+    local loadstringText = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/ImACoolDEV/BananaHUB/main/BananaHUB"))()'
+    if typeof(setclipboard) == "function" then
+        setclipboard(loadstringText)
+        CopyBananaHubBtn.Text = "✅ Copied BananaHUB Loadstring!"
+    else
+        CopyBananaHubBtn.Text = "❌ setclipboard not supported!"
+    end
+    task.delay(2, function()
+        CopyBananaHubBtn.Text = "📋 Copy BananaHUB Loadstring"
+    end)
 end)
 
 -- PULL THE_RAKE ON ANY CLICK (ON/OFF TOGGLE)
@@ -442,62 +446,6 @@ AutoPointsBtn.MouseButton1Click:Connect(function()
         task.spawn(function()
             while AUTO_POINTS_ENABLED do
                 modifyStat("Points", tonumber(PointsTextBox.Text) or 10)
-                task.wait(0.5)
-            end
-        end)
-    end
-end)
-
-AutoPickupBtn.MouseButton1Click:Connect(function()
-    AUTO_PICKUP_ENABLED = not AUTO_PICKUP_ENABLED
-    AutoPickupBtn.Text = AUTO_PICKUP_ENABLED and "🎁 Auto Pickup Items: ON" or "🎁 Auto Pickup Items: OFF"
-    AutoPickupBtn.BackgroundColor3 = AUTO_PICKUP_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    AutoPickupStroke.Color = AUTO_PICKUP_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-
-    if AUTO_PICKUP_ENABLED then
-        task.spawn(function()
-            while AUTO_PICKUP_ENABLED do
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for _, obj in ipairs(Workspace:GetDescendants()) do
-                        if not AUTO_PICKUP_ENABLED then break end
-                        if obj:IsA("BasePart") and (obj.Name:lower():find("drop") or obj.Name:lower():find("coin") or obj.Name:lower():find("item")) then
-                            safeTouchInterest(hrp, obj)
-                        end
-                    end
-                end
-                task.wait(0.4)
-            end
-        end)
-    end
-end)
-
-AutoCandyBtn.MouseButton1Click:Connect(function()
-    AUTO_CANDY_ENABLED = not AUTO_CANDY_ENABLED
-    AutoCandyBtn.Text = AUTO_CANDY_ENABLED and "🍬 Auto Farm Candies/Souls: ON" or "🍬 Auto Farm Candies/Souls: OFF"
-    AutoCandyBtn.BackgroundColor3 = AUTO_CANDY_ENABLED and Color3.fromRGB(180, 95, 30) or Color3.fromRGB(45, 30, 22)
-    AutoCandyStroke.Color = AUTO_CANDY_ENABLED and Color3.fromRGB(255, 185, 90) or Color3.fromRGB(110, 75, 55)
-
-    if AUTO_CANDY_ENABLED then
-        task.spawn(function()
-            while AUTO_CANDY_ENABLED do
-                local char = LocalPlayer.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for _, obj in ipairs(Workspace:GetDescendants()) do
-                        if not AUTO_CANDY_ENABLED then break end
-                        local n = obj.Name
-                        if n == "CandyCorns" or n == "CandyBucket" or n == "CandyPack" or n:lower():find("candycorn") or n:lower():find("candybucket") or n:lower():find("candypack") then
-                            local part = obj:IsA("BasePart") and obj or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
-                            if part then
-                                hrp.CFrame = part.CFrame + Vector3.new(0, 2, 0)
-                                safeTouchInterest(hrp, part)
-                                task.wait(0.3)
-                            end
-                        end
-                    end
-                end
                 task.wait(0.5)
             end
         end)
@@ -734,53 +682,5 @@ MiniGameBtn.MouseButton1Click:Connect(function()
                 draggingBasket = false
             end
         end)
-        UserInputService.InputChanged:Connect(function(input)
-            if draggingBasket and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                local relativeX = input.Position.X - PlayArea.AbsolutePosition.X
-                local clampedX = math.clamp(relativeX - 35, 0, PlayArea.AbsoluteSize.X - 70)
-                Basket.Position = UDim2.new(0, clampedX, 1, -30)
-            end
-        end)
-
-        task.spawn(function()
-            while MINI_GAME_ACTIVE do
-                task.wait(math.random(1, 2))
-                if not MINI_GAME_ACTIVE then break end
-
-                local Orange = Instance.new("TextButton", PlayArea)
-                Orange.Size = UDim2.new(0, 24, 0, 24)
-                Orange.Position = UDim2.new(0, math.random(10, PlayArea.AbsoluteSize.X - 34), 0, 0)
-                Orange.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
-                Orange.Text = "🍊"
-                Orange.TextSize = 14
-                Instance.new("UICorner", Orange).CornerRadius = UDim.new(1, 0)
-
-                task.spawn(function()
-                    while Orange and Orange.Parent and MINI_GAME_ACTIVE do
-                        Orange.Position = Orange.Position + UDim2.new(0, 0, 0, 4)
-                        
-                        local orangePos = Orange.AbsolutePosition
-                        local basketPos = Basket.AbsolutePosition
-                        if math.abs(orangePos.X - basketPos.X) < 55 and math.abs(orangePos.Y - basketPos.Y) < 25 then
-                            scoreVal = scoreVal + 1
-                            ScoreLabel.Text = "🍊 Score: " + scoreVal
-                            Orange:Destroy()
-                            break
-                        end
-
-                        if Orange.Position.Y.Offset > PlayArea.AbsoluteSize.Y then
-                            Orange:Destroy()
-                            break
-                        end
-                        task.wait(0.03)
-                    end
-                end)
-            end
-        end)
-    else
-        if MiniGameGui then
-            MiniGameGui:Destroy()
-            MiniGameGui = nil
-        end
     end
 end)
